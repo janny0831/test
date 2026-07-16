@@ -238,7 +238,9 @@
                 <div className="min-h-[85vh] flex items-center justify-center p-6">
                     <div className="glass max-w-md w-full p-10 rounded-3xl neon-blue">
                         <div className="text-center mb-10">
-                            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-500 to-violet-500 rounded-2xl flex items-center justify-center text-4xl mb-6 shadow-xl text-white">🌍</div>
+                            <div className="mx-auto w-24 h-24 bg-white/10 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-6 shadow-xl overflow-hidden p-2 border border-slate-200 dark:border-white/10">
+                                <img src="https://lh3.googleusercontent.com/d/1w_oN7415ADkFWUAMJtuNp7WG5JxCJcRH" alt="Logo" className="w-full h-full object-contain" />
+                            </div>
                             <h1 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-white">氣候風險與機會評估系統</h1>
                             <p className="text-slate-500 dark:text-slate-400 mt-2">大量科技 永續評估系統</p>
                         </div>
@@ -417,11 +419,11 @@
                 <div className="glass max-w-2xl w-full p-12 rounded-3xl text-center neon-green relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500 dark:bg-emerald-400"></div>
                     <div className="mb-6 text-7xl drop-shadow-xl">🎉</div>
-                    <h1 className="text-4xl font-extrabold mb-4 text-slate-800 dark:text-white">大功告成！</h1>
+                    <h1 className="text-4xl font-extrabold mb-4 text-slate-800 dark:text-white">已完成評估！</h1>
                     <p className="text-xl text-slate-600 dark:text-slate-300 mb-10 leading-relaxed font-medium">
                         辛苦了，<span className="text-emerald-600 dark:text-emerald-400 font-bold">{user.name}</span>！<br/>
                         您已成功完成 20 項氣候變遷議題的評估。<br/>
-                        您的寶貴意見是公司邁向永續的重要基石。
+                        請直接進入查看結果。
                     </p>
                     <button onClick={onNext} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-white px-10 py-5 rounded-full text-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/30">
                         查看團隊綜合結果 👉
@@ -430,7 +432,25 @@
             </div>
         );
 
-        const AdminHomeView = ({ submissions, onGoResult, onGoScatter, onGoDetail }) => {
+        const AdminHomeView = ({ submissions, onGoResult, onGoScatter, onGoDetail, onDelete }) => {
+            const [selectedIds, setSelectedIds] = useState([]);
+            const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+            const handleSelectAll = (e) => {
+                if (e.target.checked) setSelectedIds(submissions.map(s => s.userId));
+                else setSelectedIds([]);
+            };
+
+            const handleSelectOne = (userId) => {
+                setSelectedIds(prev => prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]);
+            };
+
+            const confirmDelete = () => {
+                onDelete(selectedIds);
+                setSelectedIds([]);
+                setShowDeleteModal(false);
+            };
+
             return (
                 <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
                     <div className="mb-10 text-center sm:text-left">
@@ -454,12 +474,22 @@
                     <div className="glass rounded-3xl overflow-hidden shadow-2xl">
                         <div className="p-6 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-slate-800 dark:text-white">員工填寫紀錄</h3>
+                            {selectedIds.length > 0 && (
+                                <button onClick={() => setShowDeleteModal(true)} className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md transition-colors">
+                                    刪除選取 ({selectedIds.length})
+                                </button>
+                            )}
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left min-w-[600px]">
                                 <thead>
                                     <tr className="bg-slate-200/50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-sm uppercase tracking-wider">
-                                        <th className="p-5 pl-8 font-semibold">項次</th>
+                                        <th className="p-5 pl-8 text-center w-16">
+                                            <input type="checkbox" className="w-4 h-4 cursor-pointer" 
+                                                   checked={submissions.length > 0 && selectedIds.length === submissions.length}
+                                                   onChange={handleSelectAll} />
+                                        </th>
+                                        <th className="p-5 font-semibold">項次</th>
                                         <th className="p-5 font-semibold">姓名</th>
                                         <th className="p-5 font-semibold text-center">工號</th>
                                         <th className="p-5 font-semibold text-center">填寫時間</th>
@@ -468,11 +498,16 @@
                                 </thead>
                                 <tbody>
                                     {submissions.length === 0 ? (
-                                        <tr><td colSpan="5" className="p-10 text-center text-slate-500">目前尚無填寫紀錄</td></tr>
+                                        <tr><td colSpan="6" className="p-10 text-center text-slate-500">目前尚無填寫紀錄</td></tr>
                                     ) : (
                                         submissions.map((sub, idx) => (
                                             <tr key={idx} className="border-b border-slate-200 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                                <td className="p-5 pl-8 text-slate-500 font-medium">{idx + 1}</td>
+                                                <td className="p-5 pl-8 text-center">
+                                                    <input type="checkbox" className="w-4 h-4 cursor-pointer"
+                                                           checked={selectedIds.includes(sub.userId)}
+                                                           onChange={() => handleSelectOne(sub.userId)} />
+                                                </td>
+                                                <td className="p-5 text-slate-500 font-medium">{idx + 1}</td>
                                                 <td className="p-5 font-bold text-emerald-600 dark:text-emerald-400">{sub.userName}</td>
                                                 <td className="p-5 text-center text-slate-700 dark:text-slate-300 font-mono">{sub.userId}</td>
                                                 <td className="p-5 text-center text-slate-500 dark:text-slate-400 text-sm">{new Date(sub.timestamp).toLocaleString('zh-TW')}</td>
@@ -488,6 +523,25 @@
                             </table>
                         </div>
                     </div>
+
+                    {/* 刪除確認彈窗 */}
+                    {showDeleteModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-[fadeIn_0.2s_ease-out]">
+                            <div className="glass p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95">
+                                <div className="text-5xl mb-4 drop-shadow-md">⚠️</div>
+                                <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">確定要刪除嗎？</h3>
+                                <p className="text-slate-600 dark:text-slate-400 mb-8 font-medium">將刪除選定的 {selectedIds.length} 筆紀錄，員工將需要重新進行評估，此操作無法復原。</p>
+                                <div className="flex gap-4 justify-center">
+                                    <button onClick={() => setShowDeleteModal(false)} className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors w-1/2">
+                                        取消
+                                    </button>
+                                    <button onClick={confirmDelete} className="px-6 py-3 rounded-xl font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30 transition-all w-1/2">
+                                        確認刪除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -742,9 +796,23 @@
             );
         };
 
-        const DetailedCompareView = ({ myAnswers, avgAnswers, questions, numSubmissions, user, onBack }) => {
+        const DetailedCompareView = ({ myAnswers, avgAnswers, questions, numSubmissions, user, onBack, isAdmin, onSaveEdit }) => {
+            const [editingQuestion, setEditingQuestion] = useState(null);
+            const [editForm, setEditForm] = useState({ image: 1, biz: 1, chain: 1, time: 1 });
+
+            const handleOpenEdit = (q) => {
+                setEditingQuestion(q);
+                const currentAns = myAnswers[q.id] || { image: 1, biz: 1, chain: 1, time: 1 };
+                setEditForm({ ...currentAns });
+            };
+
+            const handleSaveForm = () => {
+                onSaveEdit(editingQuestion.id, editForm);
+                setEditingQuestion(null);
+            };
+
             return (
-                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out] relative">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
                         <div>
                             <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-3">員工單項評分 vs 團隊平均</h2>
@@ -754,7 +822,7 @@
                             </p>
                         </div>
                         <button onClick={onBack} className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600 dark:text-white transition-colors">
-                            返回圖表
+                            返回列表
                         </button>
                     </div>
 
@@ -767,6 +835,7 @@
                                         <th className="p-4 font-bold border-r border-slate-300 dark:border-white/5" rowSpan="2">議題名稱</th>
                                         <th className="p-3 font-bold text-center border-b border-slate-300 dark:border-white/5 bg-blue-100 dark:bg-blue-900/20" colSpan="2">衝擊程度 (滿分5)</th>
                                         <th className="p-3 font-bold text-center border-b border-slate-300 dark:border-white/5 border-l border-slate-300 dark:border-white/5 bg-violet-100 dark:bg-violet-900/20" colSpan="2">急迫性 (滿分5)</th>
+                                        {isAdmin && <th className="p-4 font-bold text-center border-l border-slate-300 dark:border-white/5" rowSpan="2">操作</th>}
                                     </tr>
                                     <tr className="bg-slate-100 dark:bg-slate-800/50 text-sm">
                                         <th className="p-3 text-center text-blue-700 dark:text-blue-300 font-semibold border-r border-slate-300 dark:border-white/5 bg-blue-50 dark:bg-blue-900/10">該員評分</th>
@@ -798,6 +867,13 @@
                                                 <td className="p-4 text-center font-medium text-slate-600 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-900/20">{avgImpact}</td>
                                                 <td className="p-4 text-center font-bold text-violet-600 dark:text-violet-300 bg-violet-50/50 dark:bg-violet-500/5 border-l border-slate-200 dark:border-white/5 border-r border-slate-200 dark:border-white/5">{myTime}</td>
                                                 <td className="p-4 text-center font-medium text-slate-600 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-900/20">{avgTime}</td>
+                                                {isAdmin && (
+                                                    <td className="p-3 text-center border-l border-slate-200 dark:border-white/5">
+                                                        <button onClick={() => handleOpenEdit(q)} className="px-3 py-1.5 bg-amber-100 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-500 dark:hover:text-white rounded-lg text-sm font-semibold transition-colors">
+                                                            編輯
+                                                        </button>
+                                                    </td>
+                                                )}
                                             </tr>
                                         );
                                     })}
@@ -805,6 +881,52 @@
                             </table>
                         </div>
                     </div>
+
+                    {/* 編輯彈出視窗 */}
+                    {editingQuestion && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-[fadeIn_0.2s_ease-out]">
+                            <div className="glass p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95">
+                                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1">編輯評估分數</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 pb-4 border-b border-slate-200 dark:border-white/10">[{editingQuestion.letter}] {editingQuestion.name}</p>
+                                
+                                <div className="space-y-4 mb-8">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-slate-700 dark:text-slate-300 font-medium">企業形象與商譽</label>
+                                        <select value={editForm.image} onChange={e => setEditForm({...editForm, image: parseInt(e.target.value)})} className="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white px-3 py-2 rounded-lg border-none outline-none font-bold">
+                                            {[1,2,3,4,5].map(v => <option key={v} value={v}>{v} 分</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-slate-700 dark:text-slate-300 font-medium">商業策略與營運</label>
+                                        <select value={editForm.biz} onChange={e => setEditForm({...editForm, biz: parseInt(e.target.value)})} className="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white px-3 py-2 rounded-lg border-none outline-none font-bold">
+                                            {[1,2,3,4,5].map(v => <option key={v} value={v}>{v} 分</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-slate-700 dark:text-slate-300 font-medium">供應鏈關注度</label>
+                                        <select value={editForm.chain} onChange={e => setEditForm({...editForm, chain: parseInt(e.target.value)})} className="bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white px-3 py-2 rounded-lg border-none outline-none font-bold">
+                                            {[1,2,3,4,5].map(v => <option key={v} value={v}>{v} 分</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-white/5">
+                                        <label className="text-violet-700 dark:text-violet-400 font-bold">發生急迫性</label>
+                                        <select value={editForm.time} onChange={e => setEditForm({...editForm, time: parseInt(e.target.value)})} className="bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 px-3 py-2 rounded-lg border-none outline-none font-bold">
+                                            {[1,2,3,4,5].map(v => <option key={v} value={v}>{v} 分</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4">
+                                    <button onClick={() => setEditingQuestion(null)} className="flex-1 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors">
+                                        取消
+                                    </button>
+                                    <button onClick={handleSaveForm} className="flex-1 py-3 rounded-xl font-semibold bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/30 transition-all">
+                                        儲存變更
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -871,14 +993,25 @@
 
             const handleLogin = (user) => {
                 setCurrentUser(user);
+                const globalData = loadGlobalData();
                 if (user.isAdmin) {
-                    const globalData = loadGlobalData();
                     setAllSubmissions(globalData.submissions);
                     setAvgAnswers(globalData.avgAnswers);
                     setNumSubmissions(globalData.submissions.length);
                     setStep(30); 
                 } else {
-                    setStep(1);
+                    // 檢查是否已經填寫過
+                    const hasSubmitted = globalData.submissions.some(sub => sub.userId === user.id);
+                    if (hasSubmitted) {
+                        // 讀取該使用者的紀錄以供後續對比
+                        const userSub = globalData.submissions.find(sub => sub.userId === user.id);
+                        setAnswers(userSub.answers);
+                        setAvgAnswers(globalData.avgAnswers);
+                        setNumSubmissions(globalData.submissions.length);
+                        setStep(22); // 直接跳轉到完成畫面
+                    } else {
+                        setStep(1);
+                    }
                 }
             };
 
@@ -918,6 +1051,7 @@
                 if (step > 2) { setStep(prev => prev - 1); window.scrollTo(0, 0); }
             };
 
+            // 管理員：查看單一員工詳細紀錄
             const viewUserDetail = (submission) => {
                 setAdminTargetUser({ name: submission.userName, id: submission.userId });
                 setAdminTargetAnswers(submission.answers);
@@ -925,16 +1059,47 @@
                 window.scrollTo(0, 0);
             };
 
-            // 新增：控制登出確認彈窗的狀態
+            // 管理員：刪除選中的紀錄
+            const handleDeleteSubmissions = (userIds) => {
+                const globalData = loadGlobalData();
+                const newSubmissions = globalData.submissions.filter(sub => !userIds.includes(sub.userId));
+                localStorage.setItem('climate_survey_submissions', JSON.stringify(newSubmissions));
+                
+                const newGlobalData = loadGlobalData();
+                setAllSubmissions(newGlobalData.submissions);
+                setAvgAnswers(newGlobalData.avgAnswers);
+                setNumSubmissions(newGlobalData.submissions.length);
+            };
+
+            // 管理員：編輯單一員工單項題目分數
+            const handleAdminEditAnswer = (questionId, newAnswerObj) => {
+                const globalData = loadGlobalData();
+                const targetIdx = globalData.submissions.findIndex(sub => sub.userId === adminTargetUser.id);
+                
+                if (targetIdx !== -1) {
+                    // 更新 localStorage
+                    globalData.submissions[targetIdx].answers[questionId] = newAnswerObj;
+                    localStorage.setItem('climate_survey_submissions', JSON.stringify(globalData.submissions));
+                    
+                    // 重新載入全域資料
+                    const newGlobalData = loadGlobalData();
+                    setAllSubmissions(newGlobalData.submissions);
+                    setAvgAnswers(newGlobalData.avgAnswers);
+                    setNumSubmissions(newGlobalData.submissions.length);
+                    
+                    // 更新當前畫面檢視的答案
+                    setAdminTargetAnswers(globalData.submissions[targetIdx].answers);
+                }
+            };
+
+            // 控制登出確認彈窗的狀態
             const [showLogoutModal, setShowLogoutModal] = useState(false);
 
             const handleBackToLogin = () => {
-                // 顯示自訂彈窗，取代原本的 confirm()
                 setShowLogoutModal(true);
             };
 
             const confirmLogout = () => {
-                // 確定登出，清空狀態並回到 step 0
                 setStep(0);
                 setAnswers({});
                 setCurrentUser(null);
@@ -965,16 +1130,17 @@
                 } else if (step === 24) {
                     return <ScatterChartView avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} onBack={() => {setStep(23); window.scrollTo(0,0);}} onCompare={() => {setStep(25); window.scrollTo(0,0);}} theme={theme} />;
                 } else if (step === 25) {
-                    return <DetailedCompareView myAnswers={answers} avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} user={currentUser} onBack={() => {setStep(23); window.scrollTo(0,0);}} />;
+                    return <DetailedCompareView myAnswers={answers} avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} user={currentUser} onBack={() => {setStep(23); window.scrollTo(0,0);}} isAdmin={false} />;
                 }
+                // 管理員區塊
                 else if (step === 30) {
-                    return <AdminHomeView submissions={allSubmissions} onGoResult={() => {setStep(31); window.scrollTo(0,0);}} onGoScatter={() => {setStep(32); window.scrollTo(0,0);}} onGoDetail={viewUserDetail} />;
+                    return <AdminHomeView submissions={allSubmissions} onGoResult={() => {setStep(31); window.scrollTo(0,0);}} onGoScatter={() => {setStep(32); window.scrollTo(0,0);}} onGoDetail={viewUserDetail} onDelete={handleDeleteSubmissions} />;
                 } else if (step === 31) {
                     return <ResultListView avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} onBack={() => {setStep(30); window.scrollTo(0,0);}} hideCompare={true} onNext={null} />;
                 } else if (step === 32) {
                     return <ScatterChartView avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} onBack={() => {setStep(30); window.scrollTo(0,0);}} hideCompare={true} theme={theme} />;
                 } else if (step === 33) {
-                    return <DetailedCompareView myAnswers={adminTargetAnswers} avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} user={adminTargetUser} onBack={() => {setStep(30); window.scrollTo(0,0);}} />;
+                    return <DetailedCompareView myAnswers={adminTargetAnswers} avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} user={adminTargetUser} onBack={() => {setStep(30); window.scrollTo(0,0);}} isAdmin={true} onSaveEdit={handleAdminEditAnswer} />;
                 }
             };
 
@@ -1023,7 +1189,7 @@
                         {renderContent()}
                     </main>
 
-                    {/* 自訂登出確認彈窗 (取代原生的 confirm 以避免 iframe 阻擋) */}
+                    {/* 自訂登出確認彈窗 */}
                     {showLogoutModal && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-[fadeIn_0.2s_ease-out]">
                             <div className="glass p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95">
