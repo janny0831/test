@@ -1,1057 +1,1058 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>加班申請單 - Overtime Request Form</title>
+    <title>大量科技 · 氣候風險與機會評估系統</title>
+    <!-- 引入 Tailwind CSS 並設定支援 dark mode -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {}
+                }
+            }
+        }
+    </script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        body {
-            font-family: 'Noto Sans TC', 'Noto Sans Thai', sans-serif;
-            background-color: #f3f4f6;
+        body { 
+            font-family: 'Inter', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif; 
+            transition: background 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
         }
 
-        .form-container {
-            background-color: white;
-            padding: 30px;
-            width: 1100px; 
-            margin-left: auto;
-            margin-right: auto;
+        /* 亮暗模式全域背景與文字顏色 */
+        body.light { background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%); color: #1e293b; }
+        body.dark { background: linear-gradient(180deg, #0f172a 0%, #1e2937 100%); color: #e2e8f0; }
+        
+        /* Glass 特效自適應亮暗模式 */
+        .glass { 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
         }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
+        .light .glass {
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
         }
-
-        th, td {
-            border: 1px solid #000;
-            padding: 4px;
-            text-align: center;
-            vertical-align: middle;
-            height: 60px;
-            overflow: visible; 
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.6); 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
-
-        select, input {
-            width: 100%;
-            height: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            text-align: center;
-            text-align-last: center;
-            appearance: none;
-            -webkit-appearance: none;
-            cursor: pointer;
-            padding: 0;
-            margin: 0;
-            display: block;
-            line-height: 1.2;
-            font-size: 13px;
-        }
-
-        input[type="date"]::-webkit-calendar-picker-indicator {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            cursor: pointer;
-            opacity: 0;
-        }
-
-        .filter-input {
-            border: 1px solid #d1d5db !important;
-            background-color: white !important;
-            border-radius: 6px;
-            height: 34px !important;
-            width: 140px !important;
-            padding: 0 8px !important;
-            font-size: 12px;
+        
+        .dark .neon-blue { box-shadow: 0 0 15px rgba(59,130,246,0.3); }
+        .dark .neon-green { box-shadow: 0 0 15px rgba(34,211,151,0.3); }
+        .light .neon-blue { box-shadow: 0 0 15px rgba(59,130,246,0.15); }
+        .light .neon-green { box-shadow: 0 0 15px rgba(34,211,151,0.15); }
+        
+        .tab-active {
+            border-bottom: 3px solid #60a5fa;
+            color: #60a5fa;
             position: relative;
         }
-
-        .filter-select {
-            border: 1px solid #d1d5db !important;
-            background-color: white !important;
-            border-radius: 6px;
-            height: 34px !important;
-            width: 130px !important;
-            padding: 0 8px !important;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .type-select {
-            font-size: 10px;
-            background-color: #fffbeb;
-            border: 1px solid #fcd34d !important;
-            border-radius: 4px;
-            height: 20px !important;
-            margin-top: -4px; 
-            padding: 0 1px;
-            font-weight: bold;
-            color: #92400e;
-        }
-
-        .translating { background-color: #f0f9ff !important; color: #0369a1; font-style: italic; }
-
-        #confirm-modal, #edit-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(2px);
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 30px;
+        .tab-active:after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
             left: 50%;
             transform: translateX(-50%);
-            background: #1f2937;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 9999px;
-            display: none;
-            z-index: 3000;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            font-weight: bold;
+            width: 6px;
+            height: 6px;
+            background: #60a5fa;
+            border-radius: 50%;
         }
+        
+        .option-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .option-card:hover { transform: translateY(-2px); }
+        .light .option-card:hover { background: rgba(0,0,0,0.02); }
+        .dark .option-card:hover { background: rgba(255,255,255,0.08); }
 
-        .export-text-overlay {
-            display: none;
-            font-size: 10px; font-weight: bold; color: #b45309; background-color: #fffbeb;
-            border: 1px solid #fcd34d; border-radius: 4px; width: 100%; padding: 1px 0; margin-top: -4px;
+        .option-card.selected {
+            border-color: #60a5fa;
+            background: rgba(96, 165, 250, 0.1);
+            box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.5);
         }
+        
+        .gold-row { border-left: 4px solid #facc15; }
+        .light .gold-row { background: linear-gradient(90deg, rgba(250,204,21,0.15), rgba(250,204,21,0.02)); }
+        .dark .gold-row { background: linear-gradient(90deg, rgba(250,204,21,0.15), rgba(250,204,21,0.05)); }
+        
+        .progress-bar { transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-        @media print {
-            .no-print-area { display: none; }
-            body { background-color: white; padding: 0; }
-            .form-container { box-shadow: none; margin: 0; width: 100%; }
-            #table-container { max-height: none !important; overflow: visible !important; }
-        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="p-4">
+<body class="dark"> <!-- 預設為暗色系 -->
+    <div id="root"></div>
 
-    <!-- 確認視窗 -->
-    <div id="confirm-modal">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-sm text-center">
-            <div class="mb-4 text-red-500">
-                <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            </div>
-            <h3 class="text-lg font-bold mb-2" id="confirm-title">確定執行？</h3>
-            <p class="text-gray-600 mb-6 text-sm" id="confirm-msg">此操作將無法撤銷。</p>
-            <div class="flex gap-3 justify-center">
-                <button onclick="closeConfirmModal()" class="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition">取消</button>
-                <button id="confirm-execute-btn" class="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-md transition">確定執行</button>
-            </div>
-        </div>
-    </div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
 
-    <!-- 吐司通知 -->
-    <div id="toast" class="toast">操作成功</div>
+        // --- 0. 員工資料表 ---
+        const employeesData = [
+            { id: "105", name: "系統管理員", isAdmin: true },
+            { id: "091014", name: "王作京" },
+            { id: "089013", name: "宋漢釧" },
+            { id: "108022", name: "李賢銘" },
+            { id: "107013", name: "林政緯" },
+            { id: "099061", name: "林麗君" },
+            { id: "095084", name: "高豪賢" },
+            { id: "111005", name: "陳昆佑" },
+            { id: "112001", name: "黃姿瑛" },
+            { id: "095030", name: "黃錦承" },
+            { id: "098004", name: "黃贏震" },
+            { id: "096044", name: "簡伯哲" },
+            { id: "089028", name: "帥蛋華" },
+            { id: "087006", name: "簡禎祈" }
+        ];
 
-    <!-- 主頁面容器 -->
-    <div class="max-w-7xl mx-auto">
-        
-        <!-- 操作功能按鈕區 -->
-        <div class="mb-6 flex flex-wrap gap-3 no-print-area bg-white p-4 rounded-lg shadow-md border border-gray-100 items-center">
-            <button onclick="exportToImage()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2 text-sm font-bold active:scale-95">
-                匯出圖片 (Export Image)
-            </button>
-            <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2 text-sm font-bold active:scale-95">
-                匯出主表 Excel (All Rows)
-            </button>
-            <!-- 匯入 Excel 核心按鈕與隱藏的 file 欄位 -->
-            <button onclick="document.getElementById('import-excel-file').click()" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2 text-sm font-bold active:scale-95">
-                匯入主表 Excel (Import Excel)
-            </button>
-            <input type="file" id="import-excel-file" class="hidden" accept=".xlsx, .xls" onchange="importExcel(this)">
-            
-            <button onclick="exportFilteredToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2 text-sm font-bold active:scale-95">
-                匯出篩選結果 Excel (Filtered)
-            </button>
-            <button onclick="window.print()" class="bg-gray-600 hover:bg-gray-700 text-white px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2 text-sm font-bold active:scale-95">
-                列印 (Print)
-            </button>
-            <div id="cloud-sync-indicator" class="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1.5 rounded border border-gray-200">
-                ☁️ 雲端同步狀態：就緒 (Ready)
-            </div>
-            <button onclick="confirmClearForm()" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg shadow transition flex items-center gap-2 ml-auto text-sm font-bold active:scale-95">
-                一鍵清空目前表單 (ล้างข้อมูลหน้าหลัก)
-            </button>
-        </div>
+        // --- 1. 定義 11 種不同子類別的專屬配色方案 ---
+        const categoryColorMap = {
+            "政府和法規": { bg: "#1e3a8a", text: "#ffffff", label: "政府和法規", name: "Gov & Reg" },       
+            "技術": { bg: "#0d9488", text: "#ffffff", label: "技術", name: "Technology" },               
+            "市場(轉型)": { bg: "#6d28d9", text: "#ffffff", label: "市場(轉型)", name: "Market (Trans)" }, 
+            "名譽": { bg: "#e11d48", text: "#ffffff", label: "名譽", name: "Reputation" },               
+            "立即性": { bg: "#ea580c", text: "#ffffff", label: "立即性", name: "Acute" },                 
+            "長期性": { bg: "#b45309", text: "#ffffff", label: "長期性", name: "Chronic" },               
+            "資源效率": { bg: "#059669", text: "#ffffff", label: "資源效率", name: "Resource Eff" },       
+            "能源來源": { bg: "#65a30d", text: "#ffffff", label: "能源來源", name: "Energy Source" },      
+            "產品和服務": { bg: "#0284c7", text: "#ffffff", label: "產品和服務", name: "Prod & Serv" },    
+            "市場(機會)": { bg: "#db2777", text: "#ffffff", label: "市場(機會)", name: "Market (Opp)" },   
+            "韌性": { bg: "#16a34a", text: "#ffffff", label: "韌性", name: "Resilience" }                  
+        };
 
-        <!-- 篩選與時數統計控制面板 -->
-        <div class="mb-6 bg-white p-5 rounded-lg shadow-md border border-gray-100 no-print-area flex flex-wrap items-center justify-between gap-4">
-            <div class="flex flex-wrap items-center gap-4">
-                <!-- 員工篩選 -->
-                <div class="flex items-center gap-2">
-                    <span class="font-bold text-gray-700 text-sm">篩選員工 (Filter Emp):</span>
-                    <select id="filter-emp" class="filter-select" onchange="applyFilters()">
-                        <option value="ALL">全部 (All)</option>
-                        <option value="13031">阿凱 Krai (13031)</option>
-                        <option value="13056">娜萌 Mon (13056)</option>
-                    </select>
-                </div>
-                <!-- 日期區間篩選 -->
-                <div class="flex items-center gap-2">
-                    <span class="font-bold text-gray-700 text-sm">日期篩選 (Filter Date):</span>
-                    <input type="date" id="filter-start-date" class="filter-input" onchange="applyFilters()">
-                    <span class="text-gray-400 text-sm">至 (To)</span>
-                    <input type="date" id="filter-end-date" class="filter-input" onchange="applyFilters()">
-                </div>
-                <button onclick="resetFilters()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-xs font-bold transition active:scale-95">
-                    重設篩選 (Reset)
-                </button>
-            </div>
-            
-            <!-- 目前篩選總計時數 -->
-            <div class="bg-blue-50 text-blue-800 px-6 py-3 rounded-xl border border-blue-100 flex items-center gap-3">
-                <span class="font-bold text-sm">目前篩選總計 (Filtered Total):</span>
-                <span id="filtered-total-hours" class="text-2xl font-black text-blue-700">0.0</span>
-                <span class="font-bold text-xs">小時 (Hrs)</span>
-            </div>
-        </div>
+        const getCategoryKey = (type, category) => {
+            if (category === "市場") return type === "機會" ? "市場(機會)" : "市場(轉型)";
+            return category;
+        };
 
-        <!-- 主加班申請單表單 -->
-        <div id="ot-form" class="form-container shadow-xl rounded-lg">
-            <div class="text-center mb-4">
-                <h2 class="text-2xl font-bold text-gray-800">大量科技股份有限公司</h2>
-                <h1 class="text-xl font-bold text-gray-700">加班申請單 (แบบ傳專ฟอร์มขอทำงานล่วงเวลา)</h1>
-            </div>
-            <div class="flex justify-end mb-4 px-2">
-                <span class="font-bold text-gray-800 underline text-sm">單位：管理部 (Unit: HR Department)</span>
-            </div>
-            
-            <!-- 滾動表格容器 (綠色框框) -->
-            <div id="table-container" class="overflow-y-auto max-h-[660px] border border-black rounded-sm relative">
-                <table class="relative">
-                    <!-- 固定表頭 (紅色框框) -->
-                    <thead class="bg-gray-100 text-[12px] sticky top-0 z-10 shadow-[0_1px_0_rgba(0,0,0,1)]">
-                        <tr>
-                            <th class="w-20 font-bold sticky top-0 bg-gray-100 z-10 border-b border-black">工號<br><span class="text-[9px] text-gray-500 font-normal">รหัสพนักงาน</span></th>
-                            <th class="w-24 font-bold sticky top-0 bg-gray-100 z-10 border-b border-black">姓名<br><span class="text-[9px] text-gray-500 font-normal">ชื่อ</span></th>
-                            <th class="w-28 font-bold sticky top-0 bg-gray-100 z-10 border-b border-black">月/日<br><span class="text-[9px] text-gray-500 font-normal">เดือน/วัน</span></th>
-                            <th class="w-48 font-bold sticky top-0 bg-gray-100 z-10 border-b border-black" colspan="2">開始/結束時間 (24H)<br><span class="text-[9px] text-gray-500 font-normal">เวลาเริ่มต้น - สิ้นสุด</span></th>
-                            <th class="w-16 font-bold sticky top-0 bg-gray-100 z-10 border-b border-black">時數<br><span class="text-[9px] text-gray-500 font-normal">ชม.</span></th>
-                            <th class="w-40 font-bold sticky top-0 bg-gray-100 z-10 border-b border-black">工作內容<br><span class="text-[9px] text-gray-500 font-normal">ทำงานอะไร</span></th>
-                            <th class="font-bold sticky top-0 bg-gray-100 z-10 border-b border-black">備註 (支援泰文自動翻譯)<br><span class="text-[9px] text-gray-500 font-normal">หมายเหตุ (แปลอัตโนมัติ)</span></th>
-                        </tr>
-                    </thead>
-                    <tbody id="ot-tbody"></tbody>
-                </table>
-            </div>
+        // --- 2. 20個氣候議題資料設定 ---
+        const rawQuestionsData = [
+            { id: 1, type: "轉型風險", category: "政府和法規", name: "碳費徵收與碳定價政策財務衝擊", desc: "隨著台灣碳費機制與國際碳稅推行，直接與間接能源成本將隨之上升，增加整體營運與製程成本。" },
+            { id: 2, type: "轉型風險", category: "政府和法規", name: "國家淨零排放法規與綠電合規挑戰", desc: "響應國內 2050 淨零碳排政策，主管機關與科學園區對用電大戶或製造業的綠電使用與減碳配額要求更趨嚴格，法遵壓力提升。" },
+            { id: 3, type: "轉型風險", category: "政府和法規", name: "永續揭露準則（IFRS S2）強制確信風險", desc: "配合金管會永續發展路徑圖與 IFRS 框架，需投入額外資源建構溫室氣體三範疇盤查與氣候財務揭露，面臨確信成本及揭露合規壓力。" },
+            { id: 4, type: "轉型風險", category: "技術", name: "綠色低碳設備研發轉型失敗風險", desc: "若未能及時跟進市場對低碳、高效能機械設備之期待，可能面臨新技術研發投入無法回收之財務損失。" },
+            { id: 5, type: "轉型風險", category: "技術", name: "低碳製造製程與設備轉型資本支出", desc: "廠區導入節能設備、製程電氣化升級或更換低碳原材料時，短期內需投入高額的資本支出與產線調整成本。" },
+            { id: 6, type: "轉型風險", category: "市場", name: "原物料與供應鏈碳溢價成本上漲", desc: "鋼材、伺服馬達、精密電子元件等關鍵上游材料，因碳關稅或綠色生產成本提高而調漲價格，壓縮設備組裝製造之毛利率。" },
+            { id: 7, type: "轉型風險", category: "名譽", name: "永續承諾與減碳目標未達之品牌風險", desc: "若未能按期達成對外公開之永續宣言或客戶要求之減碳目標，可能降低國際指標性大廠之長期合作意願與信賴度。" },
+            { id: 8, type: "實體風險", category: "立即性", name: "急性極端氣候對生產基地之實體破壞", desc: "強烈颱風、突發性暴雨或土石流等災害，可能導致廠房硬體受損、區域停電，進而造成精密組裝產線停工或在製品毀損。" },
+            { id: 9, type: "實體風險", category: "立即性", name: "全球極端氣候引發價值鏈與物流中斷", desc: "上游關鍵零部件供應商因天災停工，或國際海空運樞紐因極端氣候癱瘓，導致零組件斷鏈、延遲交期及衍生的違約財務損失。" },
+            { id: 10, type: "實體風險", category: "長期性", name: "氣候變遷致區域乾旱與水資源短缺", desc: "長期降雨模式改變引發台灣季節性缺水危機，雖設備組裝製程用水量有限，但仍可能受整體限水政策波及營運。" },
+            { id: 11, type: "實體風險", category: "長期性", name: "平均氣溫攀升致精密恆溫廠房能耗激增", desc: "全球氣溫持續升高，導致高精密檢測設備所需的恆溫恆濕組裝測試區，空調電力負荷大幅增加，推升日常營運電費。" },
+            { id: 12, type: "機會", category: "資源效率", name: "精密製造產線低碳能源之導入", desc: "逐步將廠區內高耗能製程設備替換為高效能綠色機組，運用智慧微電網優化廠區用電負載，降低能源支出。" },
+            { id: 13, type: "機會", category: "資源效率", name: "製程廢棄物回收與循環經濟模式", desc: "建立廠內金屬切削廢料、廢切削液等原材料回收與再製機制，提高資源周轉率，進而降低新物料採購成本。" },
+            { id: 14, type: "機會", category: "資源效率", name: "廠區與價值鏈水資源管理優化", desc: "導入廠內雨水回收、中水循環系統，優化民生及測試用水效率，降低對外部自來水水源之依賴與水費成本。" },
+            { id: 15, type: "機會", category: "能源來源", name: "自建再生能源與綠電配額策略", desc: "於廠房屋頂增設太陽能光電系統，提高低碳能源自給率，降低市電依賴，並滿足供應鏈客戶對於清潔能源之要求。" },
+            { id: 16, type: "機會", category: "產品和服務", name: "創新研發綠色低碳智能設備產品", desc: "發揮研發優勢，領先市場推出「高能效、低能耗」之節能機台，協助客戶端在生產時達成可觀的減碳績效。" },
+            { id: 17, type: "機會", category: "產品和服務", name: "導入智慧能耗監測與預測維護服務", desc: "於出廠設備中整合 AI 與物聯網能耗監控技術，提供客戶機台健康診斷與能源管理方案，增加產品之綠色附加價值。" },
+            { id: 18, type: "機會", category: "市場", name: "切入全球半導體與 PCB 綠色供應鏈", desc: "憑藉綠色產品與低碳製程優勢，取得國際一線電子產業客戶之認可，藉此開拓新興地緣市場，擴大設備出口市場份額。" },
+            { id: 19, type: "機會", category: "韌性", name: "參與再生能源投資與綠色轉型推動", desc: "透過投資低碳技術或佈局廠區節能方案，提升公司在 ESG 永續評級之表現，利於向銀行爭取永續連結貸款。" },
+            { id: 20, type: "機會", category: "韌性", name: "多軌化在地供應鏈與多樣化能源布局", desc: "逐步提升本地關鍵零部件替代率以降低運輸碳排，並建立備用能源方案，顯著提升面臨多變氣候時之供應韌性。" }
+        ];
 
-            <!-- 動態增加欄位按鈕 -->
-            <div id="add-row-container" class="no-print-area mt-4 justify-center hidden">
-                <button type="button" onclick="addNewRow()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-lg shadow-md transition transform active:scale-95 flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                    </svg>
-                    新增加班欄位 (เพิ่มแถวใหม่)
-                </button>
-            </div>
+        const questionsData = rawQuestionsData.map((q, idx) => ({ ...q, letter: String.fromCharCode(65 + idx) }));
 
-            <div class="mt-8 flex justify-between items-end px-2">
-                <div class="text-[11px] text-blue-700 font-bold">
-                    * 13056 扣除邏輯：平日(12-13, 15-15:30) / 假日(7:30-8, 12-13, 17-17:30)<br>
-                    * 其他工號扣除邏輯：(12-13, 17-17:30)
-                </div>
-                <div class="text-[10px] text-gray-400 text-right italic">
-                    Generated on: <span id="gen-time"></span>
-                </div>
-            </div>
-        </div>
-    </div>
+        const scoreDefinitions = {
+            risk: {
+                image: {
+                    5: "國際主流媒體或半導體/PCB標竿客戶對本公司之環保合規性提出重大負面指責，嚴重損害品牌信任。",
+                    4: "國內主流財經或科技媒體顯著報導本公司綠色轉型不足之負面消息，引發市場關切。",
+                    3: "特定行業媒體或社群網絡報導負面消息，造成局部商譽受損，需進行危機公關。",
+                    2: "區域性或零星媒體報導負面消息，影響層面侷限於特定區域，未波及核心客戶。",
+                    1: "幾乎沒有新聞媒體或產業鏈客戶之負面報導。"
+                },
+                biz: {
+                    5: "對大量科技集團之整體核心業務產生全面性實質策略衝擊。",
+                    4: "對大量科技母公司之關鍵核心業務或年度營運方針產生重大策略影響，需投入大量資本支出進行調整。",
+                    3: "對大量科技特定廠區或組裝據點之營運有實質策略影響。",
+                    2: "對公司內部特定行政或支援部門之業務運作產生局部的策略影響，營運成本微幅增加。",
+                    1: "對公司或特定部門幾乎沒有任何商業策略與營運上的影響。"
+                },
+                chain: {
+                    5: "超過80%的主要客戶與價值鏈夥伴高度關注此項議題，若未妥善因應將直接影響後續訂單與供應商資格。",
+                    4: "50%～80%的價值鏈夥伴關注此議題，並明確要求提供低碳產品證明或減碳承諾。",
+                    3: "30%～50%的價值鏈夥伴關注此議題，開始納入供應鏈稽核、問卷調查或溝通項目中。",
+                    2: "10%～30%的價值鏈夥伴關注此議題，目前僅止於一般性資料收集與政策觀望階段。",
+                    1: "幾乎沒有價值鏈夥伴關注此議題，對現有業務合作無實質影響。"
+                }
+            },
+            opp: {
+                image: {
+                    5: "國際主流媒體或國際半導體大廠公開表揚本公司之節能減碳實績，極大提升綠色品牌價值。",
+                    4: "國內主流財經或科技媒體正面報導本公司之低碳產品研發與ESG創新實績。",
+                    3: "特定行業媒體或專業科技期刊正面報導，提升公司在業界之技術綠色領先形象。",
+                    2: "區域性媒體或零星報導正面消息，帶來局部的品牌加分與社會大眾正面印象。",
+                    1: "幾乎沒有新聞媒體或利害關係人之正面報導。"
+                },
+                biz: {
+                    5: "帶來革命性或全面性的新型態商業商機（如成功開創低碳節能檢測設備之獨家新市場）。",
+                    4: "對核心產品升級與綠色轉型策略帶來顯著效益，帶動整體營收與產值增長。",
+                    3: "對特定產品線有實質的商機與營運優化效益。",
+                    2: "對公司內部特定部門之流程優化、廢棄物減量或能源節約產生局部正面效益。",
+                    1: "對公司或特定部門幾乎沒有帶來任何商業策略與商機上的影響。"
+                },
+                chain: {
+                    5: "超過80%的價值鏈夥伴與核心客戶積極尋求綠色協作，創造高額且長期的設備採購與合作機會。",
+                    4: "50%～80%的價值鏈夥伴認同此機會，願意共同投入綠色供應鏈之轉型，優先採購低碳設備。",
+                    3: "30%～50%的價值鏈夥伴表示關注，有助於提升特定產品在綠色供應鏈中的市場競爭力。",
+                    2: "10%～30%的價值鏈夥伴關注，帶來零星的綠色設備或低碳製程優化之詢問。",
+                    1: "幾乎沒有價值鏈夥伴關注此機會，對現有業務模式無顯著改變。"
+                }
+            },
+            time: {
+                5: "【當年度】當前年度內即會面臨之災害，或已正式強制執行之轉型法規與碳費徵收。",
+                4: "【下一年度】明確預期於下一年度發生或生效之氣候法規修正、強制性低碳採購條款。",
+                3: "【短期(1-2年)】短期內需完成對策布署，如供應鏈碳足跡宣告與強制申報要求。",
+                2: "【中期(2-6年)】中長期策略轉型關鍵期，如階段性減碳目標達成、財務揭露合規。",
+                1: "【長期(7-25年)】長遠實體風險（如長期高溫、暴雨）或國家2050淨零路徑之長線市場轉型。"
+            }
+        };
 
-    <script>
-        // 【請在此處貼上您部署好的 GAS Web App 網址】
-        // 🚨 注意：若此網址無效、非 Google Apps Script 網址，或者部署時沒有將存取權限設為「所有人 (Anyone)」，就會導致 Failed to fetch 錯誤。
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzvUD0gG-VtFhFqFjuCRvFQuln_RVIzii_ULw7uzKl81mj6Our3gAw0S334JoyhyHA/exec"; 
-        
-        document.getElementById('gen-time').innerText = new Date().toLocaleString();
-        let currentSessionId = Date.now();
-        let confirmCallback = null;
-        let isSyncing = false; // 防重入機制標記
-        let syncTimeoutId = null; // 防抖延遲傳送 ID
-        const empMap = { "13031": "阿凱Krai", "13056": "娜萌Mon" };
-        const jobOptions = ["管理部/แผนกบริหาร", "支援資材部/แผนกวัสดุ", "支援生產部/แผนกผลิต"];
+        // ==================== 元件（已優化 UI 支援雙主題） ====================
 
-        // UI 提示工具
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            toast.innerText = msg;
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 3000);
-        }
+        const LoginView = ({ onLogin }) => {
+            const [inputId, setInputId] = useState("");
+            const [error, setError] = useState("");
 
-        function openConfirmModal(title, msg, callback) {
-            document.getElementById('confirm-title').innerText = title;
-            document.getElementById('confirm-msg').innerText = msg;
-            confirmCallback = callback;
-            document.getElementById('confirm-modal').style.display = 'flex';
-            document.getElementById('confirm-execute-btn').onclick = function() {
-                if(confirmCallback) confirmCallback();
-                closeConfirmModal();
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const emp = employeesData.find(e => e.id === inputId.trim());
+                if (emp) onLogin(emp);
+                else setError("找不到此員工代碼，請確認後重新輸入");
             };
-        }
 
-        function closeConfirmModal() {
-            document.getElementById('confirm-modal').style.display = 'none';
-            confirmCallback = null;
-        }
-
-        // 翻譯模組
-        function containsThai(text) { return /[\u0E00-\u0E7F]/.test(text); }
-
-        async function translateText(text) {
-            try {
-                const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-TW&dt=t&q=${encodeURIComponent(text)}`;
-                const response = await fetch(url);
-                const data = await response.json();
-                if (data && data[0]) {
-                    let fullTranslation = "";
-                    data[0].forEach(part => { if (part[0]) fullTranslation += part[0]; });
-                    return fullTranslation.trim();
-                }
-                return "";
-            } catch (error) { return ""; }
-        }
-
-        async function handleTranslation(input) {
-            const originalText = input.value.trim();
-            if (!originalText || !containsThai(originalText) || originalText.includes('(')) return;
-            input.classList.add('translating');
-            const placeholder = originalText + " (正在翻譯中...)";
-            input.value = placeholder;
-            const translated = await translateText(originalText);
-            input.classList.remove('translating');
-            input.value = (translated && translated !== originalText) ? `${originalText} (${translated})` : originalText;
-            autoSyncRecords(); 
-        }
-
-        // 篩選與統計應用核心邏輯
-        function applyFilters() {
-            const empFilter = document.getElementById('filter-emp').value;
-            const startDate = document.getElementById('filter-start-date').value;
-            const endDate = document.getElementById('filter-end-date').value;
-            
-            const rows = document.querySelectorAll('#ot-tbody tr');
-            let total = 0;
-
-            rows.forEach(row => {
-                const empSelect = row.querySelector('.emp-id');
-                const empId = empSelect.value;
-                const dateInput = row.querySelector('.ot-day');
-                const rawDateStr = dateInput.value; // YYYY-MM-DD
-                const hoursVal = parseFloat(row.querySelector('.total-hours').value || 0);
-
-                let show = true;
-
-                // 1. 篩選員工
-                if (empFilter !== 'ALL' && empId !== empFilter) {
-                    show = false;
-                }
-
-                // 2. 篩選日期區間
-                if (rawDateStr) {
-                    if (startDate && rawDateStr < startDate) show = false;
-                    if (endDate && rawDateStr > endDate) show = false;
-                } else if (startDate || endDate) {
-                    // 若有篩選日期但欄位沒填日期，預設不顯示
-                    show = false;
-                }
-
-                // 套用顯示或隱藏
-                if (show) {
-                    row.style.display = '';
-                    if (empId && hoursVal > 0) {
-                        total += hoursVal;
-                    }
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            // 更新篩選總計小時
-            document.getElementById('filtered-total-hours').innerText = total.toFixed(1);
-        }
-
-        function resetFilters() {
-            document.getElementById('filter-emp').value = 'ALL';
-            document.getElementById('filter-start-date').value = '';
-            document.getElementById('filter-end-date').value = '';
-            applyFilters();
-        }
-
-        // 檢查第 10 欄之後是否要顯示「新增加班欄位」按鈕
-        function checkLastRowFilled() {
-            const tbody = document.getElementById('ot-tbody');
-            const rows = tbody.querySelectorAll('tr');
-            const addBtnContainer = document.getElementById('add-row-container');
-            
-            if (rows.length >= 10) {
-                const checkTargetRow = rows[9]; 
-                const empIdValue = checkTargetRow.querySelector('.emp-id').value;
-                if (empIdValue && empIdValue !== "") {
-                    addBtnContainer.classList.remove('hidden');
-                    addBtnContainer.classList.add('flex');
-                } else {
-                    if (rows.length === 10) {
-                        addBtnContainer.classList.add('hidden');
-                        addBtnContainer.classList.remove('flex');
-                    }
-                }
-            } else {
-                addBtnContainer.classList.add('hidden');
-                addBtnContainer.classList.remove('flex');
-            }
-        }
-
-        // 新增空白列
-        function addNewRow() {
-            const tbody = document.getElementById('ot-tbody');
-            const timeOps = generateTimeOptions();
-            const tr = document.createElement('tr');
-            
-            tr.innerHTML = `
-                <td><select class="emp-id" onchange="handleRowEmpChange(this)"><option value="">選擇</option>${Object.keys(empMap).map(id => `<option value="${id}">${id}</option>`).join('')}</select></td>
-                <td class="bg-gray-50"><input type="text" class="emp-name" readonly placeholder="-"></td>
-                <td class="px-1 relative"><div class="day-container flex flex-col items-center justify-center h-full gap-0"><input type="date" class="ot-day h-7" onchange="handleDateChange(this)"><div class="w-full day-type-wrapper"><select class="day-type-select type-select hidden" onchange="calculateRowHours(this)"><option value="平日">平日วันธรรมดา</option><option value="假日">假日วันหยุด</option></select><div class="export-text-overlay"></div></div></div></td>
-                <td class="w-24"><select class="start-time font-mono" onchange="calculateRowHours(this)"><option value="">開始</option>${timeOps}</select></td>
-                <td class="w-24"><select class="end-time font-mono" onchange="calculateRowHours(this)"><option value="">結束</option>${timeOps}</select></td>
-                <td class="bg-blue-50"><input type="number" class="total-hours font-bold text-blue-700" readonly></td>
-                <td><select class="job-desc" onchange="autoSyncRecords()"><option value="">選擇</option>${jobOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}</select></td>
-                <td><input type="text" class="remarks" onblur="handleTranslation(this)" placeholder="泰文自動翻譯"></td>
-            `;
-            tbody.appendChild(tr);
-
-            // 自動將滾動區塊拉至底部
-            const container = document.getElementById('table-container');
-            if (container) {
-                setTimeout(() => {
-                    container.scrollTo({
-                        top: container.scrollHeight,
-                        behavior: 'smooth'
-                    });
-                }, 50);
-            }
-
-            autoSyncRecords();
-        }
-
-        // 同步並保存至 LocalStorage，並觸發全自動雲端同步 (包含防抖延遲優化)
-        function autoSyncRecords() {
-            const rows = document.querySelectorAll('#ot-tbody tr');
-            const storageKey = 'ot_permanent_database';
-            let history = [];
-
-            rows.forEach((row, index) => {
-                const id = row.querySelector('.emp-id').value;
-                const dayInput = row.querySelector('.ot-day');
-                const rawDateVal = dayInput.value; // YYYY-MM-DD
-                const dayVal = dayInput.getAttribute('data-display') || rawDateVal || "";
-                const startTime = row.querySelector('.start-time').value;
-                const endTime = row.querySelector('.end-time').value;
-                const hours = row.querySelector('.total-hours').value;
-                const job = row.querySelector('.job-desc').value;
-                const remarks = row.querySelector('.remarks').value;
-                const dayType = row.querySelector('.day-type-select').value;
-
-                if (id && dayVal && startTime && endTime && parseFloat(hours) > 0) {
-                    history.push({
-                        recordId: `SID-${currentSessionId}-ROW-${index}`,
-                        saveDate: new Date().toLocaleDateString(),
-                        empId: id,
-                        dayVal: dayVal,
-                        rawDate: rawDateVal,
-                        dayType: dayType,
-                        timeRange: `${startTime} - ${endTime}`,
-                        hours: hours,
-                        job: job,
-                        remarks: remarks
-                    });
-                }
-            });
-
-            localStorage.setItem(storageKey, JSON.stringify(history));
-            applyFilters(); // 同步完自動重新應用篩選
-            checkLastRowFilled();
-
-            // 觸發自動雲端同步 (防抖 1 秒，避免使用者連續輸入時瘋狂發送 Request)
-            if (syncTimeoutId) clearTimeout(syncTimeoutId);
-            syncTimeoutId = setTimeout(() => {
-                triggerAutoCloudSync(history);
-            }, 1000);
-        }
-
-        // 執行雲端背景同步 (不干擾使用者操作，具備沙箱跨域安全降級處理)
-        async function triggerAutoCloudSync(historyData) {
-            // 🚨 防護：如果未填寫網址或網址為默認提示結構，則不執行 fetch 以避免 Failed to Fetch 控制台報錯
-            if (!GAS_URL || GAS_URL.includes("【請在此處貼上您部署好的") || !GAS_URL.startsWith("https://")) {
-                const indicator = document.getElementById('cloud-sync-indicator');
-                if (indicator) {
-                    indicator.innerText = "☁️ 雲端同步：請先設定 GAS_URL！";
-                    indicator.className = "text-xs font-bold text-red-700 bg-red-50 px-3 py-1.5 rounded border border-red-200";
-                }
-                return;
-            }
-
-            const indicator = document.getElementById('cloud-sync-indicator');
-            if (indicator) {
-                indicator.innerText = "⏳ 雲端同步中... (Syncing...)";
-                indicator.className = "text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1.5 rounded border border-amber-200 animate-pulse";
-            }
-
-            try {
-                // 如果本地端完全沒有數據 (例如剛剛一鍵清空)，發送一個空陣列通知後台清空對應工作表
-                const payload = historyData.length > 0 ? historyData.map(item => ({
-                    empId: item.empId,
-                    empName: empMap[item.empId] || "",
-                    date: item.empId === "13056" ? `${item.dayVal} (${item.dayType})` : item.dayVal,
-                    startTime: item.timeRange.split(' - ')[0],
-                    endTime: item.timeRange.split(' - ')[1],
-                    hours: parseFloat(item.hours),
-                    job: item.job,
-                    remarks: item.remarks
-                })) : [];
-
-                let response;
-                let isOpaque = false;
-
-                try {
-                    // 1. 優先嘗試標準跨網域 (CORS) 連線發送
-                    response = await fetch(GAS_URL, {
-                        method: 'POST',
-                        mode: 'cors',
-                        redirect: 'follow',
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8', 
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                } catch (corsError) {
-                    console.warn('預覽沙盒環境安全限制，已自動切換為 no-cors 模式安全發送：', corsError);
-                    // 2. 降級備用發送：解決 preview / blob 等無效/沙箱 origin 引起的 Failed to Fetch 錯誤
-                    // 此模式下瀏覽器會順利發出 POST 資料到試算表寫入，唯獨不讀取回傳值
-                    response = await fetch(GAS_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: {
-                            'Content-Type': 'text/plain;charset=utf-8', 
-                        },
-                        body: JSON.stringify(payload)
-                    });
-                    isOpaque = true;
-                }
-                
-                if (isOpaque) {
-                    // 降級模式下直接回報已成功送出同步 (GAS 試算表端已完成寫入)
-                    if (indicator) {
-                        indicator.innerText = "✅ 雲端同步已送出 (Sent)";
-                        indicator.className = "text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded border border-emerald-200";
-                    }
-                } else {
-                    const result = await response.json();
-                    if (result.status === 'success') {
-                        if (indicator) {
-                            indicator.innerText = "✅ 雲端同步完成 (Synced)";
-                            indicator.className = "text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded border border-emerald-200";
-                        }
-                    } else {
-                        if (indicator) {
-                            indicator.innerText = "❌ 雲端同步失敗 (Sync Failed)";
-                            indicator.className = "text-xs font-bold text-red-700 bg-red-50 px-3 py-1.5 rounded border border-red-200";
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('Cloud Sync Error:', error);
-                if (indicator) {
-                    indicator.innerText = "❌ 連線錯誤 (請確認部署權限已開所有人)";
-                    indicator.className = "text-xs font-bold text-red-700 bg-red-50 px-3 py-1.5 rounded border border-red-200";
-                }
-            }
-        }
-
-        // 從 LocalStorage 載入表單資料並渲染出來
-        function loadSavedSession() {
-            const storageKey = 'ot_permanent_database';
-            const history = JSON.parse(localStorage.getItem(storageKey) || '[]');
-            if (history.length === 0) return;
-
-            const tbody = document.getElementById('ot-tbody');
-            tbody.innerHTML = ""; // 先清空
-
-            const timeOps = generateTimeOptions();
-            const rowCount = Math.max(10, history.length); // 至少10行
-
-            for (let i = 0; i < rowCount; i++) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><select class="emp-id" onchange="handleRowEmpChange(this)"><option value="">選擇</option>${Object.keys(empMap).map(id => `<option value="${id}">${id}</option>`).join('')}</select></td>
-                    <td class="bg-gray-50"><input type="text" class="emp-name" readonly placeholder="-"></td>
-                    <td class="px-1 relative"><div class="day-container flex flex-col items-center justify-center h-full gap-0"><input type="date" class="ot-day h-7" onchange="handleDateChange(this)"><div class="w-full day-type-wrapper"><select class="day-type-select type-select hidden" onchange="calculateRowHours(this)"><option value="平日">平日วันธรรมดา</option><option value="假日">假日วันหยุด</option></select><div class="export-text-overlay"></div></div></div></td>
-                    <td class="w-24"><select class="start-time font-mono" onchange="calculateRowHours(this)"><option value="">開始</option>${timeOps}</select></td>
-                    <td class="w-24"><select class="end-time font-mono" onchange="calculateRowHours(this)"><option value="">結束</option>${timeOps}</select></td>
-                    <td class="bg-blue-50"><input type="number" class="total-hours font-bold text-blue-700" readonly></td>
-                    <td><select class="job-desc" onchange="autoSyncRecords()"><option value="">選擇</option>${jobOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}</select></td>
-                    <td><input type="text" class="remarks" onblur="handleTranslation(this)" placeholder="泰文自動翻譯"></td>
-                `;
-                tbody.appendChild(tr);
-
-                const savedData = history[i];
-                if (savedData) {
-                    const empSelect = tr.querySelector('.emp-id');
-                    empSelect.value = savedData.empId;
-                    tr.querySelector('.emp-name').value = empMap[savedData.empId] || "";
-                    
-                    const dayTypeSelect = tr.querySelector('.day-type-select');
-                    if (savedData.empId === "13056") {
-                        dayTypeSelect.classList.remove('hidden');
-                        dayTypeSelect.value = savedData.dayType || "平日";
-                    }
-
-                    const dayInput = tr.querySelector('.ot-day');
-                    if (savedData.rawDate) {
-                        dayInput.value = savedData.rawDate;
-                        dayInput.setAttribute('data-display', savedData.dayVal);
-                        dayInput.style.color = "black";
-                    }
-
-                    tr.querySelector('.start-time').value = savedData.timeRange.split(' - ')[0] || "";
-                    tr.querySelector('.end-time').value = savedData.timeRange.split(' - ')[1] || "";
-                    tr.querySelector('.total-hours').value = savedData.hours;
-                    tr.querySelector('.job-desc').value = savedData.job || "";
-                    tr.querySelector('.remarks').value = savedData.remarks || "";
-                }
-            }
-
-            applyFilters();
-            checkLastRowFilled();
-        }
-
-        // 清空表單
-        function confirmClearForm() {
-            openConfirmModal(
-                '確定要清空表單與雲端資料？',
-                '此操作將同時清空網頁與 Google 試算表資料庫中所有加班記錄！ (ล้างข้อมูลหน้าหลักและระบบคลาวด์)',
-                function() {
-                    currentSessionId = Date.now();
-                    localStorage.removeItem('ot_permanent_database');
-                    initTable();
-                    resetFilters();
-                    
-                    // 觸發雲端空資料同步，將使後端試算表自動清空回到最初表頭狀態
-                    if (syncTimeoutId) clearTimeout(syncTimeoutId);
-                    triggerAutoCloudSync([]); 
-                    
-                    showToast('表單與雲端資料已同步重設');
-                }
+            return (
+                <div className="min-h-[85vh] flex items-center justify-center p-6">
+                    <div className="glass max-w-md w-full p-10 rounded-3xl neon-blue">
+                        <div className="text-center mb-10">
+                            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-500 to-violet-500 rounded-2xl flex items-center justify-center text-4xl mb-6 shadow-xl text-white">🌍</div>
+                            <h1 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-white">氣候風險與機會評估系統</h1>
+                            <p className="text-slate-500 dark:text-slate-400 mt-2">大量科技 永續評估系統</p>
+                        </div>
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <input 
+                                type="text" 
+                                value={inputId}
+                                onChange={(e) => { setInputId(e.target.value); setError(""); }}
+                                placeholder="輸入工號" 
+                                className="w-full bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/30 focus:border-blue-400 dark:focus:border-blue-400 rounded-2xl px-6 py-5 text-lg text-center placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-slate-800 dark:text-white transition-colors"
+                            />
+                            {error && <p className="text-rose-500 dark:text-red-400 text-center text-sm font-medium">{error}</p>}
+                            <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white py-5 rounded-2xl font-semibold text-lg transition-all active:scale-95 shadow-lg">
+                                進入評估
+                            </button>
+                        </form>
+                    </div>
+                </div>
             );
-        }
+        };
 
-        function handleDateChange(input) {
-            if (!input.value) return;
-            const dateObj = new Date(input.value);
-            const yyyy = dateObj.getFullYear();
-            const mm = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-            const dd = dateObj.getDate().toString().padStart(2, '0');
-            input.setAttribute('data-display', `${yyyy}/${mm}/${dd}`);
-            input.style.color = "black";
-            autoSyncRecords();
-        }
+        const WelcomeView = ({ user, onStart }) => (
+            <div className="min-h-[85vh] flex items-center justify-center p-6 animate-[fadeIn_0.5s_ease-out]">
+                <div className="glass max-w-2xl w-full p-12 rounded-3xl text-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-emerald-400"></div>
+                    <div className="mb-8 text-6xl drop-shadow-lg">🌡️</div>
+                    <h1 className="text-4xl font-bold mb-4 text-slate-800 dark:text-white tracking-wide">氣候變遷風險與機會評估</h1>
+                    <p className="text-2xl text-emerald-600 dark:text-emerald-400 mb-8 font-medium">歡迎，{user.name}</p>
+                    <p className="text-slate-600 dark:text-slate-300 text-lg leading-relaxed mb-12">
+                        透過 20 項關鍵議題，協助公司掌握轉型風險、實體風險與永續機會。
+                    </p>
+                    <button onClick={onStart} className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:brightness-110 text-white px-16 py-5 rounded-full text-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/30">
+                        開始評估 →
+                    </button>
+                </div>
+            </div>
+        );
 
-        function generateTimeOptions() {
-            let options = '';
-            for (let h = 0; h < 24; h++) {
-                for (let m = 0; m < 60; m += 30) {
-                    const time = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-                    options += `<option value="${time}">${time}</option>`;
-                }
-            }
-            return options;
-        }
+        const QuestionView = ({ question, qIndex, totalQs, currentAnswers, onSaveAnswers, onPrevQuestion }) => {
+            const [localAns, setLocalAns] = useState({ image: null, biz: null, chain: null, time: null });
+            const [activeTab, setActiveTab] = useState('image');
+            const [isAutoTransitioning, setIsAutoTransitioning] = useState(false);
 
-        function handleRowEmpChange(selectElement) {
-            const row = selectElement.closest('tr');
-            const empId = selectElement.value;
-            row.querySelector('.emp-name').value = empMap[empId] || "";
-            const dayTypeSelect = row.querySelector('.day-type-select');
-            if (empId === "13056") dayTypeSelect.classList.remove('hidden');
-            else { dayTypeSelect.classList.add('hidden'); dayTypeSelect.value = "平日"; }
-            calculateRowHours(row.querySelector('.start-time'));
-            autoSyncRecords();
-        }
+            useEffect(() => {
+                setLocalAns(currentAnswers || { image: null, biz: null, chain: null, time: null });
+                setActiveTab('image');
+                setIsAutoTransitioning(false);
+            }, [question.id, currentAnswers]);
 
-        function calculateRowHours(element) {
-            const row = element.closest('tr');
-            const empId = row.querySelector('.emp-id').value;
-            const startStr = row.querySelector('.start-time').value;
-            const endStr = row.querySelector('.end-time').value;
-            const totalInput = row.querySelector('.total-hours');
-            const dayType = row.querySelector('.day-type-select').value;
-            if (startStr && endStr) {
-                const toMin = (t) => {
-                    const [h, m] = t.split(':').map(Number);
-                    return h * 60 + m;
-                };
-                let startMin = toMin(startStr);
-                let endMin = toMin(endStr);
-                if (endMin <= startMin) endMin += 1440;
-                let totalMin = endMin - startMin;
-                let breaks = (empId === "13056") ? 
-                    (dayType === "平日" ? [{start: 720, end: 780}, {start: 900, end: 930}] : [{start: 450, end: 480}, {start: 720, end: 780}, {start: 1020, end: 1050}]) :
-                    [{start: 720, end: 780}, {start: 1020, end: 1050}];
-                
-                let deductionMin = 0;
-                breaks.forEach(b => {
-                    const overlapStart = Math.max(startMin, b.start);
-                    const overlapEnd = Math.min(endMin, b.end);
-                    if (overlapEnd > overlapStart) deductionMin += (overlapEnd - overlapStart);
-                    const overlapStartNext = Math.max(startMin, b.start + 1440);
-                    const overlapEndNext = Math.min(endMin, b.end + 1440);
-                    if (overlapEndNext > overlapStartNext) deductionMin += (overlapEndNext - overlapStartNext);
-                });
-                totalInput.value = ((totalMin - deductionMin) / 60).toFixed(1);
-            } else {
-                totalInput.value = "";
-            }
-            autoSyncRecords();
-        }
-
-        // 圖片導出 (保留滾動限制，僅抓取當前10列可視區域，不展開全部高度)
-        async function exportToImage() {
-            const element = document.getElementById('ot-form');
-            const rows = document.querySelectorAll('#ot-tbody tr');
-            
-            rows.forEach(row => {
-                const dayInput = row.querySelector('.ot-day');
-                const select = row.querySelector('.day-type-select');
-                const overlay = row.querySelector('.export-text-overlay');
-                if (!select.classList.contains('hidden')) {
-                    overlay.innerText = select.options[select.selectedIndex].text;
-                    overlay.style.display = 'block';
-                    select.style.visibility = 'hidden';
-                }
-                if (dayInput.value) {
-                    const disp = dayInput.getAttribute('data-display');
-                    const textNode = document.createElement('div');
-                    textNode.className = 'temp-date-text';
-                    textNode.innerText = disp;
-                    textNode.style.position = 'absolute';
-                    textNode.style.top = '10px'; textNode.style.width = '100%';
-                    textNode.style.fontSize = '13px'; textNode.style.zIndex = '10';
-                    dayInput.parentNode.appendChild(textNode);
-                    dayInput.style.visibility = 'hidden';
-                }
-            });
-
-            // 直接截圖，不移除最大高度 max-h-[660px] 限制，確保只拍下目前的 10 欄表格部分
-            const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
-            
-            rows.forEach(row => {
-                const dayInput = row.querySelector('.ot-day');
-                const select = row.querySelector('.day-type-select');
-                const overlay = row.querySelector('.export-text-overlay');
-                const tempText = row.querySelector('.temp-date-text');
-                overlay.style.display = 'none';
-                select.style.visibility = 'visible';
-                if (tempText) tempText.remove();
-                dayInput.style.visibility = 'visible';
-            });
-            const link = document.createElement('a');
-            link.download = `加班單_${new Date().toLocaleDateString()}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            showToast('圖片已匯出');
-        }
-
-        // 導出所有已輸入的列為 Excel
-        function exportToExcel() {
-            const rows = document.querySelectorAll('#ot-tbody tr');
-            const dataRows = [];
-            rows.forEach(row => {
-                const id = row.querySelector('.emp-id').value;
-                if (id) {
-                    const dayInput = row.querySelector('.ot-day');
-                    const dayVal = dayInput.getAttribute('data-display') || dayInput.value;
-                    const dayType = row.querySelector('.day-type-select').value;
-                    dataRows.push([
-                        id, row.querySelector('.emp-name').value, id === "13056" ? `${dayVal} (${dayType})` : dayVal,
-                        row.querySelector('.start-time').value, row.querySelector('.end-time').value,
-                        parseFloat(row.querySelector('.total-hours').value || 0), 
-                        row.querySelector('.job-desc').value,
-                        row.querySelector('.remarks').value
-                    ]);
-                }
-            });
-            const tableData = [["大量科技股份有限公司"], ["加班申請單"], ["", "", "", "", "", "", "單位：管理部"], ["工號", "姓名", "月/日", "開始", "結束", "時數", "內容", "備註"], ...dataRows];
-            const worksheet = XLSX.utils.aoa_to_sheet(tableData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Overtime");
-            XLSX.writeFile(workbook, `加班單_完整_${new Date().toLocaleDateString()}.xlsx`);
-            showToast('完整 Excel 已匯出');
-        }
-
-        // 導出目前【篩選結果】為 Excel (包含格式修正與總時數統計)
-        function exportFilteredToExcel() {
-            const rows = document.querySelectorAll('#ot-tbody tr');
-            const dataRows = [];
-            let totalSum = 0;
-
-            rows.forEach(row => {
-                // 只導出目前篩選中且有顯示（display !="none"）且有資料的列
-                if (row.style.display !== 'none') {
-                    const id = row.querySelector('.emp-id').value;
-                    if (id) {
-                        const dayInput = row.querySelector('.ot-day');
-                        const dayVal = dayInput.getAttribute('data-display') || dayInput.value;
-                        const dayType = row.querySelector('.day-type-select').value;
-                        const hours = parseFloat(row.querySelector('.total-hours').value || 0);
-                        
-                        totalSum += hours;
-                        dataRows.push([
-                            id, 
-                            row.querySelector('.emp-name').value, 
-                            id === "13056" ? `${dayVal} (${dayType})` : dayVal,
-                            row.querySelector('.start-time').value, 
-                            row.querySelector('.end-time').value,
-                            hours, 
-                            row.querySelector('.job-desc').value,
-                            row.querySelector('.remarks').value
-                        ]);
-                    }
-                }
-            });
-
-            if (dataRows.length === 0) {
-                showToast('目前無篩選資料可供匯出');
-                return;
-            }
-
-            // 組合 Excel 表格
-            const tableData = [
-                ["大量科技股份有限公司 - 加班篩選結果"],
-                ["篩選期間/員工加班彙整表"],
-                ["", "", "", "", "", "", "單位：管理部"],
-                ["工號", "姓名", "月/日", "開始", "結束", "時數", "內容", "備註"],
-                ...dataRows,
-                ["總計 (Total)", "", "", "", "", totalSum, "", ""]
+            const isOpp = question.type === "機會";
+            const defs = isOpp ? scoreDefinitions.opp : scoreDefinitions.risk;
+            const tabs = [
+                { id: 'image', title: '企業形象與商譽' },
+                { id: 'biz', title: '商業策略與營運' },
+                { id: 'chain', title: '供應鏈關注度' },
+                { id: 'time', title: '發生急迫性' }
             ];
 
-            const worksheet = XLSX.utils.aoa_to_sheet(tableData);
+            const handleSelect = (val) => {
+                if (isAutoTransitioning) return;
+                const newAns = { ...localAns, [activeTab]: val };
+                setLocalAns(newAns);
 
-            // 確保匯出的時數欄位為數值格式，便於 Excel 自動加總
-            const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for (let R = range.s.r; R <= range.e.r; ++R) {
-                const cell_ref = XLSX.utils.encode_cell({c: 5, r: R}); // 5代表時數欄（第F欄）
-                const cell = worksheet[cell_ref];
-                if (cell && cell.v !== undefined && R >= 4 && !isNaN(parseFloat(cell.v))) {
-                    cell.t = 'n';
-                    cell.v = parseFloat(cell.v);
-                }
-            }
-
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Filtered_OT");
-            XLSX.writeFile(workbook, `加班單_篩選結果_${new Date().toLocaleDateString()}.xlsx`);
-            showToast('篩選結果 Excel 已匯出');
-        }
-
-        // 輔助格式化時間數據 (支援分數格式及一般文字格式，對齊下拉選單 30 分鐘級距)
-        function formatExcelTime(val) {
-            if (val === undefined || val === null) return "";
-            if (typeof val === 'number') {
-                let totalSeconds = Math.round(val * 24 * 3600);
-                let hours = Math.floor(totalSeconds / 3600);
-                let minutes = Math.floor((totalSeconds % 3600) / 60);
-                minutes = Math.round(minutes / 30) * 30;
-                if (minutes === 60) {
-                    hours += 1;
-                    minutes = 0;
-                }
-                return `${String(hours % 24).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-            }
-            return String(val).trim();
-        }
-
-        // 匯入 EXCEL 核心處理常規函數
-        function importExcel(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    // 設定 cellDates 為 true 確保數值日期格式能直接轉成 JavaScript Date
-                    const workbook = XLSX.read(data, {type: 'array', cellDates: true, dateNF: 'yyyy-mm-dd'});
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    const json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
-
-                    if (json.length < 5) {
-                        showToast('匯入失敗：Excel 資料行數不足，無有效數據');
-                        return;
-                    }
-
-                    // 加班數據列從第 5 行開始 (Index 4)
-                    const importedRows = json.slice(4);
-                    const tbody = document.getElementById('ot-tbody');
-                    tbody.innerHTML = ""; // 先清空目前的 DOM 行
-                    const timeOps = generateTimeOptions();
-                    
-                    // 至少維持原本的 10 行基礎高度，如匯入資料超出則自動延展
-                    const totalRowsToRender = Math.max(10, importedRows.length);
-
-                    for (let i = 0; i < totalRowsToRender; i++) {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td><select class="emp-id" onchange="handleRowEmpChange(this)"><option value="">選擇</option>${Object.keys(empMap).map(id => `<option value="${id}">${id}</option>`).join('')}</select></td>
-                            <td class="bg-gray-50"><input type="text" class="emp-name" readonly placeholder="-"></td>
-                            <td class="px-1 relative"><div class="day-container flex flex-col items-center justify-center h-full gap-0"><input type="date" class="ot-day h-7" onchange="handleDateChange(this)"><div class="w-full day-type-wrapper"><select class="day-type-select type-select hidden" onchange="calculateRowHours(this)"><option value="平日">平日วันธรรมดา</option><option value="假日">假日วันหยุด</option></select><div class="export-text-overlay"></div></div></div></td>
-                            <td class="w-24"><select class="start-time font-mono" onchange="calculateRowHours(this)"><option value="">開始</option>${timeOps}</select></td>
-                            <td class="w-24"><select class="end-time font-mono" onchange="calculateRowHours(this)"><option value="">結束</option>${timeOps}</select></td>
-                            <td class="bg-blue-50"><input type="number" class="total-hours font-bold text-blue-700" readonly></td>
-                            <td><select class="job-desc" onchange="autoSyncRecords()"><option value="">選擇</option>${jobOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}</select></td>
-                            <td><input type="text" class="remarks" onblur="handleTranslation(this)" placeholder="泰文自動翻譯"></td>
-                        `;
-                        tbody.appendChild(tr);
-
-                        const rData = importedRows[i];
-                        // 確保 rData 不為空，且至少第一個欄位(工號)有資料
-                        if (rData && rData[0] !== undefined && String(rData[0]).trim() !== "" && !String(rData[0]).includes("總計")) {
-                            const empId = String(rData[0]).trim();
-                            const empSelect = tr.querySelector('.emp-id');
-                            empSelect.value = empId;
-                            tr.querySelector('.emp-name').value = empMap[empId] || rData[1] || "";
-
-                            const dayTypeSelect = tr.querySelector('.day-type-select');
-                            if (empId === "13056") {
-                                dayTypeSelect.classList.remove('hidden');
-                                dayTypeSelect.value = "平日"; // 預設值
-                            }
-
-                            // 1. 日期單元格解析與轉化
-                            let rawDateStr = "";
-                            let cellVal = rData[2];
-                            if (cellVal instanceof Date) {
-                                const yyyy = cellVal.getFullYear();
-                                const mm = (cellVal.getMonth() + 1).toString().padStart(2, '0');
-                                const dd = cellVal.getDate().toString().padStart(2, '0');
-                                rawDateStr = `${yyyy}/${mm}/${dd}`;
-                            } else {
-                                rawDateStr = String(cellVal || "").trim();
-                            }
-
-                            if (rawDateStr) {
-                                // 當工號為 13056 時，解析有無括號標註平日/假日
-                                if (empId === "13056") {
-                                    if (rawDateStr.includes("假日")) {
-                                        dayTypeSelect.value = "假日";
-                                    } else {
-                                        dayTypeSelect.value = "平日";
-                                    }
-                                }
-                                
-                                // 移除包含括號的備註文字
-                                const cleanDateStr = rawDateStr.replace(/\s*\(.*?\)/g, "").trim();
-                                const parts = cleanDateStr.split(/[/-]/);
-                                if (parts.length === 3) {
-                                    const yyyy = parts[0];
-                                    const mm = parts[1].padStart(2, '0');
-                                    const dd = parts[2].padStart(2, '0');
-                                    const formattedForInput = `${yyyy}-${mm}-${dd}`;
-                                    const formattedForDisplay = `${yyyy}/${mm}/${dd}`;
-
-                                    const dayInput = tr.querySelector('.ot-day');
-                                    dayInput.value = formattedForInput;
-                                    dayInput.setAttribute('data-display', formattedForDisplay);
-                                    dayInput.style.color = "black";
-                                }
-                            }
-
-                            // 2. 開始與結束時間單元格解析
-                            tr.querySelector('.start-time').value = formatExcelTime(rData[3]);
-                            tr.querySelector('.end-time').value = formatExcelTime(rData[4]);
-                            
-                            // 3. 時數單元格解析
-                            tr.querySelector('.total-hours').value = rData[5] !== undefined ? parseFloat(rData[5]).toFixed(1) : "";
-
-                            // 4. 工作內容單元格模糊匹配
-                            const jobVal = String(rData[6] || "").trim();
-                            if (jobOptions.includes(jobVal)) {
-                                tr.querySelector('.job-desc').value = jobVal;
-                            } else {
-                                const matched = jobOptions.find(opt => opt.includes(jobVal) || jobVal.includes(opt));
-                                if (matched) tr.querySelector('.job-desc').value = matched;
-                            }
-
-                            // 5. 備註欄位解析
-                            tr.querySelector('.remarks').value = String(rData[7] || "").trim();
-                        }
-                    }
-
-                    // 重算與更新按鈕呈現，並自動保存快照
-                    checkLastRowFilled();
-                    autoSyncRecords();
-                    showToast('主表 EXCEL 資料已成功匯入！');
-                } catch (err) {
-                    console.error("EXCEL 匯入解析出錯: ", err);
-                    showToast('匯入失敗，請確認該 Excel 是否為正常導出的主表格式');
-                } finally {
-                    input.value = ''; // 歸零 file input
+                const currIdx = tabs.findIndex(t => t.id === activeTab);
+                if (currIdx < 3) {
+                    setTimeout(() => setActiveTab(tabs[currIdx + 1].id), 200);
+                } else if (newAns.image && newAns.biz && newAns.chain && newAns.time) {
+                    setIsAutoTransitioning(true);
+                    setTimeout(() => onSaveAnswers(newAns), 600);
                 }
             };
-            reader.readAsArrayBuffer(file);
-        }
 
-        // 初始化表格基礎結構 (10行)
-        function initTable() {
-            const tbody = document.getElementById('ot-tbody');
-            tbody.innerHTML = ""; 
-            const timeOps = generateTimeOptions();
-            for (let i = 0; i < 10; i++) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><select class="emp-id" onchange="handleRowEmpChange(this)"><option value="">選擇</option>${Object.keys(empMap).map(id => `<option value="${id}">${id}</option>`).join('')}</select></td>
-                    <td class="bg-gray-50"><input type="text" class="emp-name" readonly placeholder="-"></td>
-                    <td class="px-1 relative"><div class="day-container flex flex-col items-center justify-center h-full gap-0"><input type="date" class="ot-day h-7" onchange="handleDateChange(this)"><div class="w-full day-type-wrapper"><select class="day-type-select type-select hidden" onchange="calculateRowHours(this)"><option value="平日">平日วันธรรมดา</option><option value="假日">假日วันหยุด</option></select><div class="export-text-overlay"></div></div></div></td>
-                    <td class="w-24"><select class="start-time font-mono" onchange="calculateRowHours(this)"><option value="">開始</option>${timeOps}</select></td>
-                    <td class="w-24"><select class="end-time font-mono" onchange="calculateRowHours(this)"><option value="">結束</option>${timeOps}</select></td>
-                    <td class="bg-blue-50"><input type="number" class="total-hours font-bold text-blue-700" readonly></td>
-                    <td><select class="job-desc" onchange="autoSyncRecords()"><option value="">選擇</option>${jobOptions.map(opt => `<option value="${opt}">${opt}</option>`).join('')}</select></td>
-                    <td><input type="text" class="remarks" onblur="handleTranslation(this)" placeholder="泰文自動翻譯"></td>
-                `;
-                tbody.appendChild(tr);
-            }
-            
-            const addBtnContainer = document.getElementById('add-row-container');
-            if (addBtnContainer) {
-                addBtnContainer.classList.add('hidden');
-                addBtnContainer.classList.remove('flex');
-            }
-            applyFilters();
-        }
+            const isAllAnswered = Object.values(localAns).every(v => v !== null);
+            const catKey = getCategoryKey(question.type, question.category);
+            const badge = categoryColorMap[catKey] || { bg: "#64748b", text: "#fff" };
 
-        window.onload = function() {
-            initTable();
-            loadSavedSession(); // 自動恢復上次已儲存的加班資料 (含動態增加的行)
+            return (
+                <div className="max-w-7xl mx-auto px-4 pb-20">
+                    {/* 頂部進度 */}
+                    <div className="flex justify-between items-center mb-8 text-sm">
+                        <div className="flex items-center gap-3">
+                            <span className="px-4 py-1.5 bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-white rounded-full font-medium">議題 {qIndex + 1} / {totalQs}</span>
+                            <div className="h-2 w-48 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden hidden sm:block">
+                                <div className="progress-bar h-full bg-gradient-to-r from-blue-500 to-violet-500 dark:from-blue-400 dark:to-violet-400" style={{width: `${((qIndex+1)/totalQs)*100}%`}}></div>
+                            </div>
+                        </div>
+                        {qIndex > 0 && (
+                            <button onClick={onPrevQuestion} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors">
+                                ← 上一題
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="grid lg:grid-cols-12 gap-8 relative">
+                        {/* 處理中遮罩 */}
+                        {isAutoTransitioning && (
+                            <div className="absolute inset-0 bg-white/60 dark:bg-slate-900/50 backdrop-blur-sm z-20 flex items-center justify-center rounded-3xl">
+                                <div className="text-center p-8 glass rounded-2xl">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 dark:border-slate-700 border-t-emerald-500 dark:border-t-emerald-400 mx-auto mb-4"></div>
+                                    <p className="text-emerald-600 dark:text-emerald-400 font-bold text-lg">{qIndex === totalQs - 1 ? '儲存中...' : '前往下一題...'}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 左側 議題資訊 */}
+                        <div className="lg:col-span-5">
+                            <div className="glass rounded-3xl p-8 lg:sticky lg:top-24">
+                                <div className="flex flex-wrap gap-3 mb-6">
+                                    <span className="px-4 py-1.5 bg-slate-800 text-white rounded-lg text-sm font-bold shadow-md">代號 {question.letter}</span>
+                                    <span className={`px-4 py-1.5 rounded-lg text-sm font-bold shadow-md ${isOpp ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'}`}>{question.type}</span>
+                                    <span className="px-4 py-1.5 rounded-lg text-sm font-bold shadow-md text-white" style={{backgroundColor: badge.bg}}>{question.category}</span>
+                                </div>
+                                <h2 className="text-3xl font-bold leading-tight mb-6 text-slate-800 dark:text-white">{question.name}</h2>
+                                <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-inner">
+                                    <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">議題描述</h3>
+                                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-lg">{question.desc}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 右側 評分面板 */}
+                        <div className="lg:col-span-7">
+                            <div className="glass rounded-3xl p-6 sm:p-8">
+                                <div className="flex border-b border-slate-200 dark:border-white/10 mb-8 overflow-x-auto hide-scrollbar pb-1 gap-2">
+                                    {tabs.map(tab => (
+                                        <button 
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id)}
+                                            className={`flex-1 pb-4 px-4 text-sm font-bold whitespace-nowrap transition-all ${activeTab === tab.id ? 'tab-active' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                        >
+                                            <div className="flex items-center justify-center gap-2">
+                                                {tab.title}
+                                                {localAns[tab.id] && <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400"></span>}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-4 min-h-[450px]">
+                                    {(() => {
+                                        const currentDef = activeTab === 'time' ? scoreDefinitions.time : defs[activeTab];
+                                        return [5,4,3,2,1].map(score => (
+                                            <div 
+                                                key={score} 
+                                                onClick={() => handleSelect(score)}
+                                                className={`option-card p-5 sm:p-6 rounded-2xl border cursor-pointer flex items-center gap-4 sm:gap-6 ${localAns[activeTab] === score ? 'selected' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/30'}`}
+                                            >
+                                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-bold transition-colors ${localAns[activeTab] === score ? 'bg-blue-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                                    {score}
+                                                </div>
+                                                <div className="flex-1 text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed">{currentDef[score]}</div>
+                                            </div>
+                                        ));
+                                    })()}
+                                </div>
+
+                                <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10 flex justify-between items-center">
+                                    <div className="text-sm font-medium text-slate-500">{isAllAnswered ? '✨ 已完成本題評估' : '請完成所有分頁評估'}</div>
+                                    <button 
+                                        onClick={() => onSaveAnswers(localAns)}
+                                        disabled={!isAllAnswered}
+                                        className={`px-8 sm:px-12 py-4 rounded-2xl font-bold text-lg transition-all ${isAllAnswered ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white hover:brightness-110 shadow-lg' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'}`}
+                                    >
+                                        {qIndex === totalQs - 1 ? '完成所有評估' : '下一題 →'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
         };
+
+        const CompletionView = ({ user, onNext }) => (
+            <div className="min-h-[80vh] flex items-center justify-center p-6 animate-[fadeIn_0.5s_ease-out]">
+                <div className="glass max-w-2xl w-full p-12 rounded-3xl text-center neon-green relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500 dark:bg-emerald-400"></div>
+                    <div className="mb-6 text-7xl drop-shadow-xl">🎉</div>
+                    <h1 className="text-4xl font-extrabold mb-4 text-slate-800 dark:text-white">大功告成！</h1>
+                    <p className="text-xl text-slate-600 dark:text-slate-300 mb-10 leading-relaxed font-medium">
+                        辛苦了，<span className="text-emerald-600 dark:text-emerald-400 font-bold">{user.name}</span>！<br/>
+                        您已成功完成 20 項氣候變遷議題的評估。<br/>
+                        您的寶貴意見是公司邁向永續的重要基石。
+                    </p>
+                    <button onClick={onNext} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-white px-10 py-5 rounded-full text-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/30">
+                        查看團隊綜合結果 👉
+                    </button>
+                </div>
+            </div>
+        );
+
+        const AdminHomeView = ({ submissions, onGoResult, onGoScatter, onGoDetail }) => {
+            return (
+                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                    <div className="mb-10 text-center sm:text-left">
+                        <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-slate-800 dark:text-white">管理員總覽面板 <span className="text-xl text-slate-500 font-normal ml-2">Admin Dashboard</span></h2>
+                        <p className="text-slate-600 dark:text-slate-400 text-lg">目前系統已收集到 <span className="text-emerald-600 dark:text-emerald-400 font-bold text-2xl mx-1">{submissions.length}</span> 份有效問卷。</p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6 mb-12">
+                        <div onClick={onGoResult} className="glass p-8 rounded-3xl cursor-pointer hover:neon-blue transition-all group flex flex-col items-center sm:items-start">
+                            <div className="text-5xl mb-5 group-hover:scale-110 transition-transform">📊</div>
+                            <h3 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white">氣候議題排序結果</h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-center sm:text-left">查看所有員工評分的平均加總排序與重大性列表</p>
+                        </div>
+                        <div onClick={onGoScatter} className="glass p-8 rounded-3xl cursor-pointer hover:neon-green transition-all group flex flex-col items-center sm:items-start">
+                            <div className="text-5xl mb-5 group-hover:scale-110 transition-transform">🎯</div>
+                            <h3 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white">風險與機會散佈圖</h3>
+                            <p className="text-slate-600 dark:text-slate-400 text-center sm:text-left">以四象限圖表檢視整體氣候風險與機會之分布</p>
+                        </div>
+                    </div>
+
+                    <div className="glass rounded-3xl overflow-hidden shadow-2xl">
+                        <div className="p-6 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white">員工填寫紀錄</h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left min-w-[600px]">
+                                <thead>
+                                    <tr className="bg-slate-200/50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 text-sm uppercase tracking-wider">
+                                        <th className="p-5 pl-8 font-semibold">項次</th>
+                                        <th className="p-5 font-semibold">姓名</th>
+                                        <th className="p-5 font-semibold text-center">工號</th>
+                                        <th className="p-5 font-semibold text-center">填寫時間</th>
+                                        <th className="p-5 pr-8 font-semibold text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {submissions.length === 0 ? (
+                                        <tr><td colSpan="5" className="p-10 text-center text-slate-500">目前尚無填寫紀錄</td></tr>
+                                    ) : (
+                                        submissions.map((sub, idx) => (
+                                            <tr key={idx} className="border-b border-slate-200 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                                <td className="p-5 pl-8 text-slate-500 font-medium">{idx + 1}</td>
+                                                <td className="p-5 font-bold text-emerald-600 dark:text-emerald-400">{sub.userName}</td>
+                                                <td className="p-5 text-center text-slate-700 dark:text-slate-300 font-mono">{sub.userId}</td>
+                                                <td className="p-5 text-center text-slate-500 dark:text-slate-400 text-sm">{new Date(sub.timestamp).toLocaleString('zh-TW')}</td>
+                                                <td className="p-5 pr-8 text-right">
+                                                    <button onClick={() => onGoDetail(sub)} className="bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors">
+                                                        詳細分數
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ResultListView = ({ avgAnswers, questions, numSubmissions, onNext, onCompare, onBack, hideCompare }) => {
+            const processedData = questions.map(q => {
+                const ans = avgAnswers[q.id] || { image: 0, biz: 0, chain: 0, time: 0 };
+                const impactRaw = (ans.image + ans.biz + ans.chain) / 3;
+                return {
+                    ...q,
+                    impactScore: impactRaw.toFixed(1),
+                    timeScore: ans.time.toFixed(1),
+                    sortValue: (impactRaw * 10) + ans.time 
+                };
+            });
+
+            const risks = processedData.filter(q => q.type.includes("風險")).sort((a, b) => b.sortValue - a.sortValue);
+            const opps = processedData.filter(q => q.type === "機會").sort((a, b) => b.sortValue - a.sortValue);
+
+            const renderTable = (title, data, highlightCount) => (
+                <div className="glass rounded-3xl p-1 sm:p-6 mb-10 overflow-hidden shadow-xl">
+                    <h3 className="text-xl sm:text-2xl font-bold mb-6 text-slate-800 dark:text-white px-4 pt-4">{title}</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left min-w-[700px]">
+                            <thead>
+                                <tr className="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 text-sm">
+                                    <th className="p-4 w-16 text-center font-semibold rounded-tl-xl">排名</th>
+                                    <th className="p-4 w-20 text-center font-semibold">代號</th>
+                                    <th className="p-4 font-semibold">議題</th>
+                                    <th className="p-4 w-32 text-center font-semibold">衝擊程度</th>
+                                    <th className="p-4 w-32 text-center font-semibold rounded-tr-xl">急迫性</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {data.map((item, index) => {
+                                    const isHigh = index < highlightCount;
+                                    const catKey = getCategoryKey(item.type, item.category);
+                                    const badgeColor = categoryColorMap[catKey] || { bg: "#eee", text: "#333" };
+                                    return (
+                                        <tr key={item.id} className={`border-b border-slate-200 dark:border-white/5 ${isHigh ? 'gold-row' : 'hover:bg-slate-50 dark:hover:bg-white/5'}`}>
+                                            <td className={`p-4 text-center font-bold ${isHigh ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>{index + 1}</td>
+                                            <td className="p-4 text-center">
+                                                <span className="inline-block px-3 py-1 text-xs font-bold text-white bg-slate-700 rounded-md shadow-inner">{item.letter}</span>
+                                            </td>
+                                            <td className="p-4 text-slate-800 dark:text-slate-200 font-medium">
+                                                <span className="inline-block text-xs font-bold px-2.5 py-0.5 rounded-md mr-3 text-white shadow-sm" style={{ backgroundColor: badgeColor.bg }}>{item.category}</span>
+                                                {item.name}
+                                            </td>
+                                            <td className="p-4 text-center font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/5">{item.impactScore}</td>
+                                            <td className="p-4 text-center font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/5">{item.timeScore}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
+                        <div>
+                            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-slate-800 dark:text-white">整體平均：議題排序結果</h2>
+                            <p className="text-slate-600 dark:text-slate-400 text-lg">目前已有 <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">{numSubmissions}</span> 位同仁完成填寫，此表為全體平均數據。</p>
+                        </div>
+                        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+                            {onBack && <button onClick={onBack} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600 dark:text-white transition-colors">返回首頁</button>}
+                            {!hideCompare && onCompare && <button onClick={onCompare} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-violet-100 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-600/30 dark:text-violet-300 dark:hover:bg-violet-600 transition-colors">個人 vs 團隊比對</button>}
+                            {onNext && <button onClick={onNext} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all">查看散佈圖矩陣</button>}
+                        </div>
+                    </div>
+                    {renderTable("風險議題排序 (高亮標示前 7 項)", risks, 7)}
+                    {renderTable("機會議題排序 (高亮標示前 2 項)", opps, 2)}
+                </div>
+            );
+        };
+
+        const ScatterChartView = ({ avgAnswers, questions, numSubmissions, onBack, onCompare, hideCompare, theme }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                if (chartInstance.current) chartInstance.current.destroy();
+                const ctx = chartRef.current.getContext('2d');
+                
+                let scatterPoints = [];
+                let legendData = [];
+
+                questions.forEach((q) => {
+                    const ans = avgAnswers[q.id] || { image: 0, biz: 0, chain: 0, time: 0 };
+                    const impact = (ans.image + ans.biz + ans.chain) / 3;
+                    const time = ans.time;
+                    
+                    const catKey = getCategoryKey(q.type, q.category);
+                    const colorSet = categoryColorMap[catKey] || { bg: "#4b5563", text: "#ffffff", name: "Other" };
+
+                    scatterPoints.push({ x: time, y: impact, _label: q.letter, _name: q.name, _type: q.type, _category: q.category, _engCat: colorSet.name, _color: colorSet });
+                    legendData.push({ letter: q.letter, name: q.name, type: q.type, category: q.category, engCat: colorSet.name, color: colorSet });
+                });
+
+                const isDark = theme === 'dark';
+                Chart.defaults.color = isDark ? '#94a3b8' : '#64748b'; 
+                Chart.defaults.font.family = "'Inter', 'PingFang TC', sans-serif";
+
+                const quadrantPlugin = {
+                    id: 'quadrantBg',
+                    beforeDraw: (chart) => {
+                        const { ctx, chartArea: { top, right, bottom, left }, scales: { x, y } } = chart;
+                        const midX = x.getPixelForValue(3); 
+                        const midY = y.getPixelForValue(3); 
+                        ctx.save();
+                        const safeMidX = Math.max(left, Math.min(right, midX));
+                        const safeMidY = Math.max(top, Math.min(bottom, midY));
+                        
+                        // 動態適應亮暗色系的四象限底色
+                        const bgColors = isDark ? {
+                            q1: 'rgba(239, 68, 68, 0.05)', q2: 'rgba(245, 158, 11, 0.05)',
+                            q3: 'rgba(16, 185, 129, 0.05)', q4: 'rgba(59, 130, 246, 0.05)'
+                        } : {
+                            q1: 'rgba(239, 68, 68, 0.08)', q2: 'rgba(245, 158, 11, 0.08)',
+                            q3: 'rgba(16, 185, 129, 0.08)', q4: 'rgba(59, 130, 246, 0.08)'
+                        };
+
+                        ctx.fillStyle = bgColors.q1; ctx.fillRect(safeMidX, top, right - safeMidX, safeMidY - top); 
+                        ctx.fillStyle = bgColors.q2; ctx.fillRect(left, top, safeMidX - left, safeMidY - top);
+                        ctx.fillStyle = bgColors.q3; ctx.fillRect(safeMidX, safeMidY, right - safeMidX, bottom - safeMidY);
+                        ctx.fillStyle = bgColors.q4; ctx.fillRect(left, safeMidY, safeMidX - left, bottom - safeMidY);
+                        ctx.restore();
+                    }
+                };
+
+                const drawLabelsPlugin = {
+                    id: 'drawLabels',
+                    afterDatasetsDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        ctx.save();
+                        ctx.font = "bold 13px 'Inter', sans-serif"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
+                        ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
+                        chart.data.datasets.forEach((dataset, datasetIndex) => {
+                            const meta = chart.getDatasetMeta(datasetIndex);
+                            meta.data.forEach((element, index) => {
+                                const dataPoint = dataset.data[index];
+                                if (dataPoint && dataPoint._label) {
+                                    ctx.shadowColor = isDark ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.9)";
+                                    ctx.shadowBlur = 4;
+                                    ctx.fillText(dataPoint._label, element.x, element.y);
+                                }
+                            });
+                        });
+                        ctx.restore();
+                    }
+                };
+
+                Chart.register(quadrantPlugin, drawLabelsPlugin);
+
+                chartInstance.current = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: '氣候變遷議題',
+                            data: scatterPoints,
+                            backgroundColor: scatterPoints.map(p => p._color.bg),
+                            borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                            borderWidth: 2,
+                            pointRadius: 14,
+                            pointHoverRadius: 16,
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, layout: { padding: 20 },
+                        scales: {
+                            x: { 
+                                min: 0.5, max: 5.5, 
+                                grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+                                title: { display: true, text: '平均發生急迫性 (低 → 高)', font: { size: 14, weight: 'bold' }, color: isDark ? '#cbd5e1' : '#475569' } 
+                            },
+                            y: { 
+                                min: 0.5, max: 5.5, 
+                                grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' },
+                                title: { display: true, text: '平均衝擊程度 (低 → 高)', font: { size: 14, weight: 'bold' }, color: isDark ? '#cbd5e1' : '#475569' } 
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+                                titleColor: isDark ? '#fff' : '#0f172a',
+                                bodyColor: isDark ? '#cbd5e1' : '#334155',
+                                borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label: (context) => {
+                                        const p = context.raw;
+                                        return [`[${p._label}] ${p._name}`, `類別: ${p._category}`, `急迫性: ${p.x.toFixed(1)} | 衝擊: ${p.y.toFixed(1)}`];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                window.legendData = legendData;
+                
+                return () => { Chart.unregister(quadrantPlugin, drawLabelsPlugin); if (chartInstance.current) chartInstance.current.destroy(); }
+            }, [avgAnswers, questions, theme]); // 加入 theme dependency，切換主題時重新繪圖
+
+            return (
+                <div className="max-w-7xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+                        <div>
+                            <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-slate-800 dark:text-white">整體平均：風險與機會散佈圖</h2>
+                            <p className="text-slate-600 dark:text-slate-400 font-medium">基於 <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">{numSubmissions}</span> 人的平均意見繪製。</p>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                            {onBack && <button onClick={onBack} className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600 dark:text-white transition-colors">返回列表</button>}
+                            {!hideCompare && onCompare && <button onClick={onCompare} className="px-6 py-3 rounded-xl font-semibold bg-violet-100 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-600/30 dark:text-violet-300 dark:hover:bg-violet-600 transition-colors">個人 vs 團隊比對</button>}
+                        </div>
+                    </div>
+
+                    <div className="glass p-5 rounded-2xl mb-8 border border-slate-200 dark:border-white/5">
+                        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">11 種子類別顏色配置對照表</h4>
+                        <div className="flex flex-wrap gap-3">
+                            {Object.entries(categoryColorMap).map(([key, item]) => (
+                                <span key={key} className="px-3 py-1.5 text-xs font-bold rounded-lg text-white flex items-center gap-2 shadow-sm" style={{ backgroundColor: item.bg }}>
+                                    <span className="w-2 h-2 rounded-full bg-white/50"></span>{key}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="glass p-4 sm:p-8 rounded-3xl shadow-2xl mb-10">
+                        <div className="relative h-[600px] sm:h-[700px] w-full"><canvas ref={chartRef}></canvas></div>
+                    </div>
+
+                    <div className="glass p-6 sm:p-8 rounded-3xl shadow-xl">
+                        <h3 className="text-xl font-bold mb-6 text-slate-800 dark:text-white border-b border-slate-200 dark:border-white/10 pb-4">20 個議題詳細圖例 (A ~ T)</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-6">
+                            {window.legendData && window.legendData.map(l => (
+                                <div key={l.letter} className="flex items-start p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-white/10">
+                                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-xl text-white font-extrabold text-sm mr-4 flex-shrink-0 shadow-md" style={{ backgroundColor: l.color.bg }}>{l.letter}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-slate-800 dark:text-slate-200 font-medium text-sm leading-snug" title={l.name}>{l.name}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const DetailedCompareView = ({ myAnswers, avgAnswers, questions, numSubmissions, user, onBack }) => {
+            return (
+                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
+                        <div>
+                            <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-3">員工單項評分 vs 團隊平均</h2>
+                            <p className="text-slate-600 dark:text-slate-400 font-medium">
+                                查詢對象：<span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">{user.name} ({user.id || user.userId})</span> | 
+                                團隊總基數：<span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">{numSubmissions}</span> 人
+                            </p>
+                        </div>
+                        <button onClick={onBack} className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600 dark:text-white transition-colors">
+                            返回圖表
+                        </button>
+                    </div>
+
+                    <div className="glass rounded-3xl overflow-hidden shadow-xl">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left min-w-[800px]">
+                                <thead>
+                                    <tr className="bg-slate-200 dark:bg-slate-800/80 text-slate-800 dark:text-white">
+                                        <th className="p-4 font-bold text-center w-16 border-r border-slate-300 dark:border-white/5" rowSpan="2">代號</th>
+                                        <th className="p-4 font-bold border-r border-slate-300 dark:border-white/5" rowSpan="2">議題名稱</th>
+                                        <th className="p-3 font-bold text-center border-b border-slate-300 dark:border-white/5 bg-blue-100 dark:bg-blue-900/20" colSpan="2">衝擊程度 (滿分5)</th>
+                                        <th className="p-3 font-bold text-center border-b border-slate-300 dark:border-white/5 border-l border-slate-300 dark:border-white/5 bg-violet-100 dark:bg-violet-900/20" colSpan="2">急迫性 (滿分5)</th>
+                                    </tr>
+                                    <tr className="bg-slate-100 dark:bg-slate-800/50 text-sm">
+                                        <th className="p-3 text-center text-blue-700 dark:text-blue-300 font-semibold border-r border-slate-300 dark:border-white/5 bg-blue-50 dark:bg-blue-900/10">該員評分</th>
+                                        <th className="p-3 text-center text-slate-600 dark:text-slate-400 font-semibold bg-slate-200/50 dark:bg-slate-900/30">團隊平均</th>
+                                        <th className="p-3 text-center text-violet-700 dark:text-violet-300 font-semibold border-l border-slate-300 dark:border-white/5 border-r border-slate-300 dark:border-white/5 bg-violet-50 dark:bg-violet-900/10">該員評分</th>
+                                        <th className="p-3 text-center text-slate-600 dark:text-slate-400 font-semibold bg-slate-200/50 dark:bg-slate-900/30">團隊平均</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {questions.map((q, idx) => {
+                                        const myAns = myAnswers[q.id] || { image: 0, biz: 0, chain: 0, time: 0 };
+                                        const avgAns = avgAnswers[q.id] || { image: 0, biz: 0, chain: 0, time: 0 };
+                                        
+                                        const myImpact = ((myAns.image + myAns.biz + myAns.chain) / 3).toFixed(1);
+                                        const avgImpact = ((avgAns.image + avgAns.biz + avgAns.chain) / 3).toFixed(1);
+                                        const myTime = myAns.time.toFixed(1);
+                                        const avgTime = avgAns.time.toFixed(1);
+
+                                        return (
+                                            <tr key={q.id} className="border-b border-slate-200 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                                <td className="p-3 text-center border-r border-slate-200 dark:border-white/5">
+                                                    <span className="inline-block px-3 py-1 text-xs font-bold text-white bg-slate-700 rounded-md">{q.letter}</span>
+                                                </td>
+                                                <td className="p-4 text-slate-800 dark:text-slate-200 font-medium border-r border-slate-200 dark:border-white/5">
+                                                    <span className={`text-xs font-bold mr-2 px-2 py-0.5 rounded-md ${q.type === '機會' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>{q.type}</span>
+                                                    {q.name}
+                                                </td>
+                                                <td className="p-4 text-center font-bold text-blue-600 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-500/5 border-r border-slate-200 dark:border-white/5">{myImpact}</td>
+                                                <td className="p-4 text-center font-medium text-slate-600 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-900/20">{avgImpact}</td>
+                                                <td className="p-4 text-center font-bold text-violet-600 dark:text-violet-300 bg-violet-50/50 dark:bg-violet-500/5 border-l border-slate-200 dark:border-white/5 border-r border-slate-200 dark:border-white/5">{myTime}</td>
+                                                <td className="p-4 text-center font-medium text-slate-600 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-900/20">{avgTime}</td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- 4. 主應用程式組件 ---
+        const App = () => {
+            const [step, setStep] = useState(0); 
+            const [currentUser, setCurrentUser] = useState(null);
+            
+            // 主題狀態 (亮/暗)
+            const [theme, setTheme] = useState('dark');
+
+            // 處理主題切換副作用
+            useEffect(() => {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.body.classList.add('dark');
+                    document.body.classList.remove('light');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.body.classList.remove('dark');
+                    document.body.classList.add('light');
+                }
+            }, [theme]);
+
+            const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+            
+            // 用戶填寫紀錄
+            const [answers, setAnswers] = useState({});
+            
+            // 全域統整紀錄
+            const [allSubmissions, setAllSubmissions] = useState([]);
+            const [avgAnswers, setAvgAnswers] = useState({});
+            const [numSubmissions, setNumSubmissions] = useState(0);
+
+            // 管理員正在查看的對象
+            const [adminTargetUser, setAdminTargetUser] = useState(null);
+            const [adminTargetAnswers, setAdminTargetAnswers] = useState({});
+
+            const loadGlobalData = () => {
+                const existing = JSON.parse(localStorage.getItem('climate_survey_submissions') || '[]');
+                const newAvg = {};
+                questionsData.forEach(q => { newAvg[q.id] = { image: 0, biz: 0, chain: 0, time: 0 }; });
+                
+                if (existing.length > 0) {
+                    questionsData.forEach(q => {
+                        let sumI = 0, sumB = 0, sumC = 0, sumT = 0, count = 0;
+                        existing.forEach(sub => {
+                            if(sub.answers && sub.answers[q.id]) {
+                                sumI += sub.answers[q.id].image;
+                                sumB += sub.answers[q.id].biz;
+                                sumC += sub.answers[q.id].chain;
+                                sumT += sub.answers[q.id].time;
+                                count++;
+                            }
+                        });
+                        if (count > 0) {
+                            newAvg[q.id] = { image: sumI/count, biz: sumB/count, chain: sumC/count, time: sumT/count };
+                        }
+                    });
+                }
+                return { submissions: existing, avgAnswers: newAvg };
+            };
+
+            const handleLogin = (user) => {
+                setCurrentUser(user);
+                if (user.isAdmin) {
+                    const globalData = loadGlobalData();
+                    setAllSubmissions(globalData.submissions);
+                    setAvgAnswers(globalData.avgAnswers);
+                    setNumSubmissions(globalData.submissions.length);
+                    setStep(30); 
+                } else {
+                    setStep(1);
+                }
+            };
+
+            const handleFinishAll = (finalAnswers) => {
+                const globalData = loadGlobalData();
+                const filtered = globalData.submissions.filter(sub => sub.userId !== currentUser.id);
+                filtered.push({
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    answers: finalAnswers,
+                    timestamp: new Date().toISOString()
+                });
+                localStorage.setItem('climate_survey_submissions', JSON.stringify(filtered));
+
+                const newGlobalData = loadGlobalData();
+                setAvgAnswers(newGlobalData.avgAnswers);
+                setNumSubmissions(newGlobalData.submissions.length);
+                
+                setStep(22);
+                window.scrollTo(0, 0);
+            };
+
+            const handleSaveAnswer = (ans) => {
+                const currentQId = questionsData[step - 2].id;
+                const newAnswers = { ...answers, [currentQId]: ans };
+                setAnswers(newAnswers);
+
+                if (step - 2 === questionsData.length - 1) {
+                    handleFinishAll(newAnswers);
+                } else {
+                    setStep(prev => prev + 1);
+                    window.scrollTo(0, 0);
+                }
+            };
+
+            const handlePrevQuestion = () => {
+                if (step > 2) { setStep(prev => prev - 1); window.scrollTo(0, 0); }
+            };
+
+            const viewUserDetail = (submission) => {
+                setAdminTargetUser({ name: submission.userName, id: submission.userId });
+                setAdminTargetAnswers(submission.answers);
+                setStep(33);
+                window.scrollTo(0, 0);
+            };
+
+            // 新增：控制登出確認彈窗的狀態
+            const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+            const handleBackToLogin = () => {
+                // 顯示自訂彈窗，取代原本的 confirm()
+                setShowLogoutModal(true);
+            };
+
+            const confirmLogout = () => {
+                // 確定登出，清空狀態並回到 step 0
+                setStep(0);
+                setAnswers({});
+                setCurrentUser(null);
+                setShowLogoutModal(false);
+            };
+
+            const renderContent = () => {
+                if (step === 0) {
+                    return <LoginView onLogin={handleLogin} />;
+                } else if (step === 1) {
+                    return <WelcomeView user={currentUser} onStart={() => setStep(2)} />;
+                } else if (step >= 2 && step <= 21) {
+                    const qIdx = step - 2;
+                    return (
+                        <QuestionView 
+                            question={questionsData[qIdx]} 
+                            qIndex={qIdx} 
+                            totalQs={questionsData.length}
+                            currentAnswers={answers[questionsData[qIdx].id]}
+                            onSaveAnswers={handleSaveAnswer} 
+                            onPrevQuestion={handlePrevQuestion}
+                        />
+                    );
+                } else if (step === 22) {
+                    return <CompletionView user={currentUser} onNext={() => { setStep(23); window.scrollTo(0,0); }} />;
+                } else if (step === 23) {
+                    return <ResultListView avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} onNext={() => {setStep(24); window.scrollTo(0,0);}} onCompare={() => {setStep(25); window.scrollTo(0,0);}} />;
+                } else if (step === 24) {
+                    return <ScatterChartView avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} onBack={() => {setStep(23); window.scrollTo(0,0);}} onCompare={() => {setStep(25); window.scrollTo(0,0);}} theme={theme} />;
+                } else if (step === 25) {
+                    return <DetailedCompareView myAnswers={answers} avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} user={currentUser} onBack={() => {setStep(23); window.scrollTo(0,0);}} />;
+                }
+                else if (step === 30) {
+                    return <AdminHomeView submissions={allSubmissions} onGoResult={() => {setStep(31); window.scrollTo(0,0);}} onGoScatter={() => {setStep(32); window.scrollTo(0,0);}} onGoDetail={viewUserDetail} />;
+                } else if (step === 31) {
+                    return <ResultListView avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} onBack={() => {setStep(30); window.scrollTo(0,0);}} hideCompare={true} onNext={null} />;
+                } else if (step === 32) {
+                    return <ScatterChartView avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} onBack={() => {setStep(30); window.scrollTo(0,0);}} hideCompare={true} theme={theme} />;
+                } else if (step === 33) {
+                    return <DetailedCompareView myAnswers={adminTargetAnswers} avgAnswers={avgAnswers} questions={questionsData} numSubmissions={numSubmissions} user={adminTargetUser} onBack={() => {setStep(30); window.scrollTo(0,0);}} />;
+                }
+            };
+
+            return (
+                <div className="min-h-screen">
+                    <header className="glass border-b border-slate-200 dark:border-white/5 sticky top-0 z-50 bg-white/50 dark:bg-slate-900/80 backdrop-blur-md">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-3 text-xl font-bold text-slate-800 dark:text-white tracking-wide">
+                                <span className="text-2xl drop-shadow-md">🌍</span>
+                                <div>
+                                    大量科技 氣候風險與機會評估系統
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-sm font-medium">
+                                {/* 亮暗模式切換按鈕 */}
+                                <button 
+                                    onClick={toggleTheme} 
+                                    className="p-2 rounded-full text-xl hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+                                    title={theme === 'dark' ? '切換為亮色模式' : '切換為暗色模式'}
+                                >
+                                    {theme === 'dark' ? '🌞' : '🌙'}
+                                </button>
+
+                                {currentUser && (
+                                    <>
+                                        <div className={`px-4 py-1.5 rounded-full shadow-inner ${currentUser.isAdmin ? 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/30' : 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`}>
+                                            <span className="opacity-70 mr-2">登入者</span>
+                                            {currentUser.name} {currentUser.isAdmin && '(管理員)'}
+                                        </div>
+                                        
+                                        {/* 回到登入畫面按鈕 */}
+                                        <button 
+                                            onClick={handleBackToLogin} 
+                                            className="text-slate-600 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors flex items-center gap-1 bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 px-3 py-1.5 rounded-lg"
+                                        >
+                                            回到登入畫面
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="pt-8 sm:pt-12">
+                        {renderContent()}
+                    </main>
+
+                    {/* 自訂登出確認彈窗 (取代原生的 confirm 以避免 iframe 阻擋) */}
+                    {showLogoutModal && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-[fadeIn_0.2s_ease-out]">
+                            <div className="glass p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95">
+                                <div className="text-5xl mb-4 drop-shadow-md">⚠️</div>
+                                <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">確定要登出嗎？</h3>
+                                <p className="text-slate-600 dark:text-slate-400 mb-8 font-medium">未儲存的進度將會遺失。</p>
+                                <div className="flex gap-4 justify-center">
+                                    <button 
+                                        onClick={() => setShowLogoutModal(false)} 
+                                        className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors w-1/2"
+                                    >
+                                        取消
+                                    </button>
+                                    <button 
+                                        onClick={confirmLogout} 
+                                        className="px-6 py-3 rounded-xl font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30 transition-all w-1/2"
+                                    >
+                                        確定
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
