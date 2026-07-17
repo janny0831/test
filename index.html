@@ -180,6 +180,9 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        // --- GAS 後端網址設定 ---
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyMiSKrmpuUkLxM_gtbYRxa4aubQkJkpmZ7PGoic5yGyr-r13LfjHcJ1bnNcVCc6usb/exec"; 
+
         // --- 0. 員工資料表 ---
         const employeesData = [
             { id: "105", name: "系統管理員", isAdmin: true },
@@ -1025,6 +1028,9 @@
             const [step, setStep] = useState(0); 
             const [currentUser, setCurrentUser] = useState(null);
             
+            // 處理 GAS 同步狀態
+            const [gasInitDone, setGasInitDone] = useState(false);
+
             // 主題狀態 (亮/暗)
             const [theme, setTheme] = useState('dark');
 
@@ -1054,6 +1060,40 @@
             // 管理員正在查看的對象
             const [adminTargetUser, setAdminTargetUser] = useState(null);
             const [adminTargetAnswers, setAdminTargetAnswers] = useState({});
+
+            // 初始化讀取 GAS 資料庫
+            useEffect(() => {
+                const fetchFromGAS = async () => {
+                    if (!GAS_URL || GAS_URL.includes("請在此貼上您的_GAS_網址")) {
+                        setGasInitDone(true);
+                        return;
+                    }
+                    try {
+                        const response = await fetch(`${GAS_URL}?action=read`);
+                        const data = await response.json();
+                        if (data && data.success && data.submissions) {
+                            localStorage.setItem('climate_survey_submissions', JSON.stringify(data.submissions));
+                        }
+                    } catch (error) {
+                        console.error("GAS 資料讀取失敗:", error);
+                    }
+                    setGasInitDone(true);
+                };
+                fetchFromGAS();
+            }, []);
+
+            // 同步資料上傳至 GAS
+            const syncToGAS = async (dataToSync) => {
+                if (!GAS_URL || GAS_URL.includes("請在此貼上您的_GAS_網址")) return;
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: "sync_all", submissions: dataToSync })
+                    });
+                } catch (error) {
+                    console.error("GAS 資料同步失敗:", error);
+                }
+            };
 
             const loadGlobalData = () => {
                 const existing = JSON.parse(localStorage.getItem('climate_survey_submissions') || '[]');
@@ -1114,6 +1154,7 @@
                     timestamp: new Date().toISOString()
                 });
                 localStorage.setItem('climate_survey_submissions', JSON.stringify(filtered));
+                syncToGAS(filtered); // 結束時自動上傳更新至 GAS
 
                 const newGlobalData = loadGlobalData();
                 setAvgAnswers(newGlobalData.avgAnswers);
@@ -1153,6 +1194,7 @@
                 const globalData = loadGlobalData();
                 const newSubmissions = globalData.submissions.filter(sub => !userIds.includes(sub.userId));
                 localStorage.setItem('climate_survey_submissions', JSON.stringify(newSubmissions));
+                syncToGAS(newSubmissions); // 刪除時自動同步至 GAS
                 
                 const newGlobalData = loadGlobalData();
                 setAllSubmissions(newGlobalData.submissions);
@@ -1169,6 +1211,7 @@
                     // 更新 localStorage
                     globalData.submissions[targetIdx].answers[questionId] = newAnswerObj;
                     localStorage.setItem('climate_survey_submissions', JSON.stringify(globalData.submissions));
+                    syncToGAS(globalData.submissions); // 編輯後自動同步至 GAS
                     
                     // 重新載入全域資料
                     const newGlobalData = loadGlobalData();
@@ -1282,7 +1325,15 @@
                     </header>
 
                     <main className="pt-8 sm:pt-12 relative z-10">
-                        {renderContent()}
+                        {!gasInitDone ? (
+                            <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in-up">
+                                <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-200 dark:border-slate-700 border-t-emerald-500 dark:border-t-emerald-400 mb-6"></div>
+                                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">正在與 Google Sheet 同步中...</h2>
+                                <p className="text-slate-500 dark:text-slate-400">正在載入最新數據，請稍候</p>
+                            </div>
+                        ) : (
+                            renderContent()
+                        )}
                     </main>
 
                     {/* 自訂登出確認彈窗 */}
