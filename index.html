@@ -1129,15 +1129,16 @@
                     setNumSubmissions(globalData.submissions.length);
                     setStep(30); 
                 } else {
-                    // 檢查是否已經填寫過
+                    // 防止重複填寫：系統自動檢查該員工是否已有提交紀錄
                     const hasSubmitted = globalData.submissions.some(sub => sub.userId === user.id);
                     if (hasSubmitted) {
-                        // 讀取該使用者的紀錄以供後續對比
+                        // 若有，讀取該使用者的紀錄以供後續對比
                         const userSub = globalData.submissions.find(sub => sub.userId === user.id);
                         setAnswers(userSub.answers);
                         setAvgAnswers(globalData.avgAnswers);
                         setNumSubmissions(globalData.submissions.length);
-                        setStep(22); // 直接跳轉到完成畫面
+                        // 直接引導至「完成畫面」，只能查看結果而無法重新評估
+                        setStep(22);
                     } else {
                         setStep(1);
                     }
