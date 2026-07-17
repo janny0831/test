@@ -27,33 +27,112 @@
             font-family: 'Inter', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif; 
             transition: background 0.3s ease, color 0.3s ease;
             min-height: 100vh;
+            overflow-x: hidden; /* 防止 blob 溢出 */
         }
 
         /* 亮暗模式全域背景與文字顏色 */
-        body.light { background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%); color: #1e293b; }
-        body.dark { background: linear-gradient(180deg, #0f172a 0%, #1e2937 100%); color: #e2e8f0; }
+        body.light { background: #f8fafc; color: #1e293b; }
+        body.dark { background: #0f172a; color: #e2e8f0; }
         
-        /* Glass 特效自適應亮暗模式 */
+        /* 升級版 Glass 特效自適應亮暗模式 */
         .glass { 
-            backdrop-filter: blur(20px); 
-            -webkit-backdrop-filter: blur(20px);
-            transition: all 0.3s ease;
+            backdrop-filter: blur(24px); 
+            -webkit-backdrop-filter: blur(24px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
         }
+        
+        /* 玻璃光澤反射效果 */
+        .glass::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%; width: 50%; height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-20deg);
+            transition: all 0.7s ease;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .glass:hover::before { left: 200%; }
+
         .light .glass {
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.6);
             border: 1px solid rgba(255, 255, 255, 0.8);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255,255,255,0.4);
         }
         .dark .glass {
-            background: rgba(30, 41, 59, 0.6); 
+            background: rgba(30, 41, 59, 0.45); 
             border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255,255,255,0.05);
         }
+        .light .glass:hover {
+            box-shadow: 0 12px 40px rgba(31, 38, 135, 0.12), inset 0 0 0 1px rgba(255,255,255,0.6);
+            transform: translateY(-2px);
+        }
+        .dark .glass:hover {
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255,255,255,0.15);
+            transform: translateY(-2px);
+        }
+
+        /* 流體動畫背景 (Fluid Background Blobs) */
+        @keyframes blob-float {
+            0% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes blob-float-alt {
+            0% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-30px, 50px) scale(1.2); }
+            66% { transform: translate(20px, -20px) scale(0.8); }
+            100% { transform: translate(0, 0) scale(1); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .blob-container {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: -1; overflow: hidden; pointer-events: none;
+        }
+        .blob {
+            position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.7; mix-blend-mode: multiply;
+        }
+        .dark .blob { mix-blend-mode: screen; opacity: 0.4; }
         
-        .dark .neon-blue { box-shadow: 0 0 15px rgba(59,130,246,0.3); }
-        .dark .neon-green { box-shadow: 0 0 15px rgba(34,211,151,0.3); }
-        .light .neon-blue { box-shadow: 0 0 15px rgba(59,130,246,0.15); }
-        .light .neon-green { box-shadow: 0 0 15px rgba(34,211,151,0.15); }
+        .blob-1 {
+            top: -10%; left: -10%; width: 50vw; height: 50vw;
+            background: rgba(59,130,246,0.6); /* Blue */
+            animation: blob-float 20s ease-in-out infinite;
+        }
+        .blob-2 {
+            bottom: -20%; right: -10%; width: 60vw; height: 60vw;
+            background: rgba(16,185,129,0.5); /* Emerald */
+            animation: blob-float-alt 25s ease-in-out infinite;
+        }
+        .blob-3 {
+            top: 30%; left: 40%; width: 40vw; height: 40vw;
+            background: rgba(139,92,246,0.5); /* Violet */
+            animation: blob-float 22s ease-in-out infinite;
+        }
+
+        /* 滾動條美化以符合玻璃擬態 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
+        .dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); }
+        .dark ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+        
+        .dark .neon-blue { box-shadow: 0 0 25px rgba(59,130,246,0.4); }
+        .dark .neon-green { box-shadow: 0 0 25px rgba(34,211,151,0.4); }
+        .light .neon-blue { box-shadow: 0 0 25px rgba(59,130,246,0.25); }
+        .light .neon-green { box-shadow: 0 0 25px rgba(34,211,151,0.25); }
         
         .tab-active {
             border-bottom: 3px solid #60a5fa;
@@ -235,25 +314,27 @@
             };
 
             return (
-                <div className="min-h-[85vh] flex items-center justify-center p-6">
-                    <div className="glass max-w-md w-full p-10 rounded-3xl neon-blue">
-                        <div className="text-center mb-10">
+                <div className="min-h-[85vh] flex items-center justify-center p-6 animate-fade-in-up">
+                    <div className="glass max-w-md w-full p-10 rounded-3xl neon-blue relative overflow-hidden">
+                        <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/20 rounded-full filter blur-3xl pointer-events-none"></div>
+                        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-violet-500/20 rounded-full filter blur-3xl pointer-events-none"></div>
+                        <div className="text-center mb-10 relative z-10">
                             <div className="mx-auto w-24 h-24 bg-white/10 dark:bg-slate-800/50 rounded-2xl flex items-center justify-center mb-6 shadow-xl overflow-hidden p-2 border border-slate-200 dark:border-white/10">
                                 <img src="https://lh3.googleusercontent.com/d/1w_oN7415ADkFWUAMJtuNp7WG5JxCJcRH" alt="Logo" className="w-full h-full object-contain" />
                             </div>
                             <h1 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-white">氣候風險與機會評估系統</h1>
                             <p className="text-slate-500 dark:text-slate-400 mt-2">大量科技 永續評估系統</p>
                         </div>
-                        <form onSubmit={handleLogin} className="space-y-6">
+                        <form onSubmit={handleLogin} className="space-y-6 relative z-10">
                             <input 
                                 type="text" 
                                 value={inputId}
                                 onChange={(e) => { setInputId(e.target.value); setError(""); }}
                                 placeholder="輸入工號" 
-                                className="w-full bg-slate-100 dark:bg-white/10 border border-slate-300 dark:border-white/30 focus:border-blue-400 dark:focus:border-blue-400 rounded-2xl px-6 py-5 text-lg text-center placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-slate-800 dark:text-white transition-colors"
+                                className="w-full bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border border-slate-300 dark:border-white/20 focus:border-blue-400 dark:focus:border-blue-400 rounded-2xl px-6 py-5 text-2xl text-center placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none text-slate-800 dark:text-white transition-all focus:shadow-[0_0_15px_rgba(59,130,246,0.3)]"
                             />
                             {error && <p className="text-rose-500 dark:text-red-400 text-center text-sm font-medium">{error}</p>}
-                            <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-600 hover:to-violet-700 text-white py-5 rounded-2xl font-semibold text-lg transition-all active:scale-95 shadow-lg">
+                            <button type="submit" className="w-full bg-gradient-to-r from-blue-500 to-violet-600 hover:from-blue-400 hover:to-violet-500 text-white py-5 rounded-2xl font-semibold text-lg transition-all active:scale-95 shadow-lg shadow-blue-500/30 border border-white/20">
                                 進入評估
                             </button>
                         </form>
@@ -263,17 +344,19 @@
         };
 
         const WelcomeView = ({ user, onStart }) => (
-            <div className="min-h-[85vh] flex items-center justify-center p-6 animate-[fadeIn_0.5s_ease-out]">
+            <div className="min-h-[85vh] flex items-center justify-center p-6 animate-fade-in-up">
                 <div className="glass max-w-2xl w-full p-12 rounded-3xl text-center shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-emerald-400"></div>
-                    <div className="mb-8 text-6xl drop-shadow-lg">🌡️</div>
-                    <h1 className="text-4xl font-bold mb-4 text-slate-800 dark:text-white tracking-wide">氣候變遷風險與機會評估</h1>
-                    <p className="text-2xl text-emerald-600 dark:text-emerald-400 mb-8 font-medium">歡迎，{user.name}</p>
-                    <p className="text-slate-600 dark:text-slate-300 text-lg leading-relaxed mb-12">
+                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-emerald-400 to-teal-400"></div>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none"></div>
+                    <div className="mb-8 text-6xl drop-shadow-lg relative z-10">🌡️</div>
+                    <h1 className="text-4xl font-bold mb-4 text-slate-800 dark:text-white tracking-wide relative z-10">氣候變遷風險與機會評估</h1>
+                    <p className="text-2xl text-emerald-600 dark:text-emerald-400 mb-8 font-medium relative z-10">歡迎，{user.name}</p>
+                    <p className="text-slate-600 dark:text-slate-300 text-lg leading-relaxed mb-12 relative z-10">
                         透過 20 項關鍵議題，協助公司掌握轉型風險、實體風險與永續機會。
                     </p>
-                    <button onClick={onStart} className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:brightness-110 text-white px-16 py-5 rounded-full text-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/30">
-                        開始評估 →
+                    <button onClick={onStart} className="relative z-10 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white px-16 py-5 rounded-full text-xl font-bold transition-all active:scale-95 shadow-[0_10px_30px_rgba(16,185,129,0.3)] border border-white/20 overflow-hidden group">
+                        <span className="relative z-10">開始評估 →</span>
+                        <div className="absolute inset-0 h-full w-full bg-white/20 scale-x-0 group-hover:scale-x-100 transform origin-left transition-transform duration-300"></div>
                     </button>
                 </div>
             </div>
@@ -318,7 +401,7 @@
             const badge = categoryColorMap[catKey] || { bg: "#64748b", text: "#fff" };
 
             return (
-                <div className="max-w-7xl mx-auto px-4 pb-20">
+                <div className="max-w-7xl mx-auto px-4 pb-20 animate-fade-in-up">
                     {/* 頂部進度 */}
                     <div className="flex justify-between items-center mb-8 text-sm">
                         <div className="flex items-center gap-3">
@@ -347,14 +430,15 @@
 
                         {/* 左側 議題資訊 */}
                         <div className="lg:col-span-5">
-                            <div className="glass rounded-3xl p-8 lg:sticky lg:top-24">
-                                <div className="flex flex-wrap gap-3 mb-6">
+                            <div className="glass rounded-3xl p-8 lg:sticky lg:top-28 z-10">
+                                <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                                <div className="flex flex-wrap gap-3 mb-6 relative z-10">
                                     <span className="px-4 py-1.5 bg-slate-800 text-white rounded-lg text-sm font-bold shadow-md">代號 {question.letter}</span>
                                     <span className={`px-4 py-1.5 rounded-lg text-sm font-bold shadow-md ${isOpp ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'}`}>{question.type}</span>
                                     <span className="px-4 py-1.5 rounded-lg text-sm font-bold shadow-md text-white" style={{backgroundColor: badge.bg}}>{question.category}</span>
                                 </div>
-                                <h2 className="text-3xl font-bold leading-tight mb-6 text-slate-800 dark:text-white">{question.name}</h2>
-                                <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-inner">
+                                <h2 className="text-3xl font-bold leading-tight mb-6 text-slate-800 dark:text-white relative z-10">{question.name}</h2>
+                                <div className="bg-slate-50/80 dark:bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-white/5 shadow-inner relative z-10">
                                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">議題描述</h3>
                                     <p className="text-slate-700 dark:text-slate-300 leading-relaxed text-lg">{question.desc}</p>
                                 </div>
@@ -363,8 +447,9 @@
 
                         {/* 右側 評分面板 */}
                         <div className="lg:col-span-7">
-                            <div className="glass rounded-3xl p-6 sm:p-8">
-                                <div className="flex border-b border-slate-200 dark:border-white/10 mb-8 overflow-x-auto hide-scrollbar pb-1 gap-2">
+                            <div className="glass rounded-3xl p-6 sm:p-8 relative z-10">
+                                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                                <div className="flex border-b border-slate-200 dark:border-white/10 mb-8 overflow-x-auto hide-scrollbar pb-1 gap-2 relative z-10">
                                     {tabs.map(tab => (
                                         <button 
                                             key={tab.id}
@@ -386,23 +471,24 @@
                                             <div 
                                                 key={score} 
                                                 onClick={() => handleSelect(score)}
-                                                className={`option-card p-5 sm:p-6 rounded-2xl border cursor-pointer flex items-center gap-4 sm:gap-6 ${localAns[activeTab] === score ? 'selected' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/30'}`}
+                                                className={`option-card p-5 sm:p-6 rounded-2xl border cursor-pointer flex items-center gap-4 sm:gap-6 relative overflow-hidden backdrop-blur-sm transition-all duration-300 ${localAns[activeTab] === score ? 'selected transform scale-[1.02]' : 'bg-white/40 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'}`}
                                             >
-                                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-bold transition-colors ${localAns[activeTab] === score ? 'bg-blue-500 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                                {localAns[activeTab] === score && <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent"></div>}
+                                                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex-shrink-0 flex items-center justify-center text-2xl sm:text-3xl font-bold transition-all duration-300 ${localAns[activeTab] === score ? 'bg-gradient-to-br from-blue-400 to-blue-600 text-white shadow-lg shadow-blue-500/40 scale-110' : 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400'}`}>
                                                     {score}
                                                 </div>
-                                                <div className="flex-1 text-slate-700 dark:text-slate-300 text-sm sm:text-base leading-relaxed">{currentDef[score]}</div>
+                                                <div className="flex-1 text-slate-700 dark:text-slate-200 text-sm sm:text-base leading-relaxed relative z-10 font-medium">{currentDef[score]}</div>
                                             </div>
                                         ));
                                     })()}
                                 </div>
 
-                                <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10 flex justify-between items-center">
+                                <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/10 flex justify-between items-center relative z-10">
                                     <div className="text-sm font-medium text-slate-500">{isAllAnswered ? '✨ 已完成本題評估' : '請完成所有分頁評估'}</div>
                                     <button 
                                         onClick={() => onSaveAnswers(localAns)}
                                         disabled={!isAllAnswered}
-                                        className={`px-8 sm:px-12 py-4 rounded-2xl font-bold text-lg transition-all ${isAllAnswered ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white hover:brightness-110 shadow-lg' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed'}`}
+                                        className={`px-8 sm:px-12 py-4 rounded-2xl font-bold text-lg transition-all duration-300 ${isAllAnswered ? 'bg-gradient-to-r from-blue-500 to-violet-500 text-white hover:scale-105 shadow-[0_10px_25px_rgba(99,102,241,0.4)] border border-white/20' : 'bg-slate-200/50 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 cursor-not-allowed backdrop-blur-md border border-slate-200 dark:border-white/5'}`}
                                     >
                                         {qIndex === totalQs - 1 ? '完成所有評估' : '下一題 →'}
                                     </button>
@@ -415,17 +501,18 @@
         };
 
         const CompletionView = ({ user, onNext }) => (
-            <div className="min-h-[80vh] flex items-center justify-center p-6 animate-[fadeIn_0.5s_ease-out]">
+            <div className="min-h-[80vh] flex items-center justify-center p-6 animate-fade-in-up">
                 <div className="glass max-w-2xl w-full p-12 rounded-3xl text-center neon-green relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500 dark:bg-emerald-400"></div>
-                    <div className="mb-6 text-7xl drop-shadow-xl">🎉</div>
-                    <h1 className="text-4xl font-extrabold mb-4 text-slate-800 dark:text-white">已完成評估！</h1>
-                    <p className="text-xl text-slate-600 dark:text-slate-300 mb-10 leading-relaxed font-medium">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none"></div>
+                    <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-teal-400"></div>
+                    <div className="mb-6 text-7xl drop-shadow-xl animate-bounce relative z-10">🎉</div>
+                    <h1 className="text-4xl font-extrabold mb-4 text-slate-800 dark:text-white relative z-10">已完成評估！</h1>
+                    <p className="text-xl text-slate-600 dark:text-slate-300 mb-10 leading-relaxed font-medium relative z-10">
                         辛苦了，<span className="text-emerald-600 dark:text-emerald-400 font-bold">{user.name}</span>！<br/>
                         您已成功完成 20 項氣候變遷議題的評估。<br/>
                         請直接進入查看結果。
                     </p>
-                    <button onClick={onNext} className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-white px-10 py-5 rounded-full text-xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/30">
+                    <button onClick={onNext} className="relative z-10 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white px-10 py-5 rounded-full text-xl font-bold transition-all active:scale-95 shadow-[0_10px_30px_rgba(16,185,129,0.4)] border border-white/20">
                         查看團隊綜合結果 👉
                     </button>
                 </div>
@@ -452,27 +539,29 @@
             };
 
             return (
-                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                <div className="max-w-6xl mx-auto px-4 pb-20 animate-fade-in-up">
                     <div className="mb-10 text-center sm:text-left">
                         <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-slate-800 dark:text-white">管理員總覽面板 <span className="text-xl text-slate-500 font-normal ml-2">Admin Dashboard</span></h2>
                         <p className="text-slate-600 dark:text-slate-400 text-lg">目前系統已收集到 <span className="text-emerald-600 dark:text-emerald-400 font-bold text-2xl mx-1">{submissions.length}</span> 份有效問卷。</p>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-6 mb-12">
-                        <div onClick={onGoResult} className="glass p-8 rounded-3xl cursor-pointer hover:neon-blue transition-all group flex flex-col items-center sm:items-start">
-                            <div className="text-5xl mb-5 group-hover:scale-110 transition-transform">📊</div>
-                            <h3 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white">氣候議題排序結果</h3>
-                            <p className="text-slate-600 dark:text-slate-400 text-center sm:text-left">查看所有員工評分的平均加總排序與重大性列表</p>
+                        <div onClick={onGoResult} className="glass p-8 rounded-3xl cursor-pointer hover:neon-blue transition-all duration-300 group flex flex-col items-center sm:items-start relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="text-5xl mb-5 group-hover:scale-125 group-hover:-rotate-12 transition-all duration-300 relative z-10">📊</div>
+                            <h3 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white relative z-10">氣候議題排序結果</h3>
+                            <p className="text-slate-600 dark:text-slate-300 text-center sm:text-left relative z-10">查看所有員工評分的平均加總排序與重大性列表</p>
                         </div>
-                        <div onClick={onGoScatter} className="glass p-8 rounded-3xl cursor-pointer hover:neon-green transition-all group flex flex-col items-center sm:items-start">
-                            <div className="text-5xl mb-5 group-hover:scale-110 transition-transform">🎯</div>
-                            <h3 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white">風險與機會散佈圖</h3>
-                            <p className="text-slate-600 dark:text-slate-400 text-center sm:text-left">以四象限圖表檢視整體氣候風險與機會之分布</p>
+                        <div onClick={onGoScatter} className="glass p-8 rounded-3xl cursor-pointer hover:neon-green transition-all duration-300 group flex flex-col items-center sm:items-start relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="text-5xl mb-5 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300 relative z-10">🎯</div>
+                            <h3 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white relative z-10">風險與機會散佈圖</h3>
+                            <p className="text-slate-600 dark:text-slate-300 text-center sm:text-left relative z-10">以四象限圖表檢視整體氣候風險與機會之分布</p>
                         </div>
                     </div>
 
-                    <div className="glass rounded-3xl overflow-hidden shadow-2xl">
-                        <div className="p-6 bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
+                    <div className="glass rounded-3xl overflow-hidden shadow-2xl relative z-10">
+                        <div className="p-6 bg-white/40 dark:bg-slate-800/60 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-slate-800 dark:text-white">員工填寫紀錄</h3>
                             {selectedIds.length > 0 && (
                                 <button onClick={() => setShowDeleteModal(true)} className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md transition-colors">
@@ -526,16 +615,16 @@
 
                     {/* 刪除確認彈窗 */}
                     {showDeleteModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-[fadeIn_0.2s_ease-out]">
-                            <div className="glass p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95">
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-md px-4 animate-fade-in-up">
+                            <div className="glass p-8 rounded-3xl max-w-sm w-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] text-center border border-white/20 bg-white/70 dark:bg-slate-800/70">
                                 <div className="text-5xl mb-4 drop-shadow-md">⚠️</div>
                                 <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">確定要刪除嗎？</h3>
                                 <p className="text-slate-600 dark:text-slate-400 mb-8 font-medium">將刪除選定的 {selectedIds.length} 筆紀錄，員工將需要重新進行評估，此操作無法復原。</p>
                                 <div className="flex gap-4 justify-center">
-                                    <button onClick={() => setShowDeleteModal(false)} className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors w-1/2">
+                                    <button onClick={() => setShowDeleteModal(false)} className="px-6 py-3 rounded-xl font-semibold bg-slate-200/50 hover:bg-slate-300/50 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600/50 dark:text-white backdrop-blur-sm transition-all w-1/2">
                                         取消
                                     </button>
-                                    <button onClick={confirmDelete} className="px-6 py-3 rounded-xl font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30 transition-all w-1/2">
+                                    <button onClick={confirmDelete} className="px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white shadow-lg shadow-rose-500/30 transition-all w-1/2 border border-white/20">
                                         確認刪除
                                     </button>
                                 </div>
@@ -562,7 +651,7 @@
             const opps = processedData.filter(q => q.type === "機會").sort((a, b) => b.sortValue - a.sortValue);
 
             const renderTable = (title, data, highlightCount) => (
-                <div className="glass rounded-3xl p-1 sm:p-6 mb-10 overflow-hidden shadow-xl">
+                <div className="glass rounded-3xl p-1 sm:p-6 mb-10 overflow-hidden shadow-xl animate-fade-in-up">
                     <h3 className="text-xl sm:text-2xl font-bold mb-6 text-slate-800 dark:text-white px-4 pt-4">{title}</h3>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left min-w-[700px]">
@@ -602,16 +691,16 @@
             );
 
             return (
-                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                <div className="max-w-6xl mx-auto px-4 pb-20 animate-fade-in-up">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10">
                         <div>
                             <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-slate-800 dark:text-white">整體平均：議題排序結果</h2>
                             <p className="text-slate-600 dark:text-slate-400 text-lg">目前已有 <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">{numSubmissions}</span> 位同仁完成填寫，此表為全體平均數據。</p>
                         </div>
                         <div className="flex flex-wrap gap-3 w-full md:w-auto">
-                            {onBack && <button onClick={onBack} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600 dark:text-white transition-colors">返回首頁</button>}
-                            {!hideCompare && onCompare && <button onClick={onCompare} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-violet-100 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-600/30 dark:text-violet-300 dark:hover:bg-violet-600 transition-colors">個人 vs 團隊比對</button>}
-                            {onNext && <button onClick={onNext} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 dark:hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all">查看散佈圖矩陣</button>}
+                            {onBack && <button onClick={onBack} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-white/40 hover:bg-white/60 text-slate-700 dark:bg-slate-700/40 dark:hover:bg-slate-600/60 dark:text-white backdrop-blur-md border border-slate-200 dark:border-white/10 transition-all shadow-sm">返回首頁</button>}
+                            {!hideCompare && onCompare && <button onClick={onCompare} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-violet-500/10 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-500/20 dark:text-violet-300 dark:hover:bg-violet-500 border border-violet-500/20 backdrop-blur-sm transition-all shadow-lg">個人 vs 團隊比對</button>}
+                            {onNext && <button onClick={onNext} className="flex-1 md:flex-none px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white shadow-[0_8px_20px_rgba(79,70,229,0.3)] border border-white/20 transition-all hover:scale-105">查看散佈圖矩陣</button>}
                         </div>
                     </div>
                     {renderTable("風險議題排序 (高亮標示前 7 項)", risks, 7)}
@@ -752,19 +841,19 @@
             }, [avgAnswers, questions, theme]); // 加入 theme dependency，切換主題時重新繪圖
 
             return (
-                <div className="max-w-7xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out]">
+                <div className="max-w-7xl mx-auto px-4 pb-20 animate-fade-in-up">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
                         <div>
                             <h2 className="text-3xl sm:text-4xl font-bold mb-3 text-slate-800 dark:text-white">整體平均：風險與機會散佈圖</h2>
                             <p className="text-slate-600 dark:text-slate-400 font-medium">基於 <span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">{numSubmissions}</span> 人的平均意見繪製。</p>
                         </div>
                         <div className="flex flex-wrap gap-3">
-                            {onBack && <button onClick={onBack} className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600 dark:text-white transition-colors">返回列表</button>}
-                            {!hideCompare && onCompare && <button onClick={onCompare} className="px-6 py-3 rounded-xl font-semibold bg-violet-100 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-600/30 dark:text-violet-300 dark:hover:bg-violet-600 transition-colors">個人 vs 團隊比對</button>}
+                            {onBack && <button onClick={onBack} className="px-6 py-3 rounded-xl font-semibold bg-white/40 hover:bg-white/60 text-slate-700 dark:bg-slate-700/40 dark:hover:bg-slate-600/60 dark:text-white backdrop-blur-md border border-slate-200 dark:border-white/10 transition-all shadow-sm">返回列表</button>}
+                            {!hideCompare && onCompare && <button onClick={onCompare} className="px-6 py-3 rounded-xl font-semibold bg-violet-500/10 text-violet-700 hover:bg-violet-600 hover:text-white dark:bg-violet-500/20 dark:text-violet-300 dark:hover:bg-violet-500 border border-violet-500/20 backdrop-blur-sm transition-all shadow-lg">個人 vs 團隊比對</button>}
                         </div>
                     </div>
 
-                    <div className="glass p-5 rounded-2xl mb-8 border border-slate-200 dark:border-white/5">
+                    <div className="glass p-5 rounded-2xl mb-8 border border-slate-200 dark:border-white/10 shadow-lg">
                         <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">11 種子類別顏色配置對照表</h4>
                         <div className="flex flex-wrap gap-3">
                             {Object.entries(categoryColorMap).map(([key, item]) => (
@@ -812,7 +901,7 @@
             };
 
             return (
-                <div className="max-w-6xl mx-auto px-4 pb-20 animate-[fadeIn_0.3s_ease-out] relative">
+                <div className="max-w-6xl mx-auto px-4 pb-20 animate-fade-in-up relative">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8">
                         <div>
                             <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-3">員工單項評分 vs 團隊平均</h2>
@@ -821,12 +910,12 @@
                                 團隊總基數：<span className="text-emerald-600 dark:text-emerald-400 font-bold mx-1">{numSubmissions}</span> 人
                             </p>
                         </div>
-                        <button onClick={onBack} className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600 dark:text-white transition-colors">
+                        <button onClick={onBack} className="px-6 py-3 rounded-xl font-semibold bg-white/40 hover:bg-white/60 text-slate-700 dark:bg-slate-700/40 dark:hover:bg-slate-600/60 dark:text-white backdrop-blur-md border border-slate-200 dark:border-white/10 transition-all shadow-sm">
                             返回列表
                         </button>
                     </div>
 
-                    <div className="glass rounded-3xl overflow-hidden shadow-xl">
+                    <div className="glass rounded-3xl overflow-hidden shadow-2xl relative z-10">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left min-w-[800px]">
                                 <thead>
@@ -855,20 +944,20 @@
                                         const avgTime = avgAns.time.toFixed(1);
 
                                         return (
-                                            <tr key={q.id} className="border-b border-slate-200 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                                <td className="p-3 text-center border-r border-slate-200 dark:border-white/5">
+                                            <tr key={q.id} className="border-b border-slate-200 dark:border-white/10 hover:bg-slate-100/50 dark:hover:bg-white/5 transition-colors">
+                                                <td className="p-3 text-center border-r border-slate-200 dark:border-white/10">
                                                     <span className="inline-block px-3 py-1 text-xs font-bold text-white bg-slate-700 rounded-md">{q.letter}</span>
                                                 </td>
-                                                <td className="p-4 text-slate-800 dark:text-slate-200 font-medium border-r border-slate-200 dark:border-white/5">
+                                                <td className="p-4 text-slate-800 dark:text-slate-200 font-medium border-r border-slate-200 dark:border-white/10">
                                                     <span className={`text-xs font-bold mr-2 px-2 py-0.5 rounded-md ${q.type === '機會' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'}`}>{q.type}</span>
                                                     {q.name}
                                                 </td>
-                                                <td className="p-4 text-center font-bold text-blue-600 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-500/5 border-r border-slate-200 dark:border-white/5">{myImpact}</td>
+                                                <td className="p-4 text-center font-bold text-blue-600 dark:text-blue-300 bg-blue-50/50 dark:bg-blue-500/5 border-r border-slate-200 dark:border-white/10">{myImpact}</td>
                                                 <td className="p-4 text-center font-medium text-slate-600 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-900/20">{avgImpact}</td>
-                                                <td className="p-4 text-center font-bold text-violet-600 dark:text-violet-300 bg-violet-50/50 dark:bg-violet-500/5 border-l border-slate-200 dark:border-white/5 border-r border-slate-200 dark:border-white/5">{myTime}</td>
+                                                <td className="p-4 text-center font-bold text-violet-600 dark:text-violet-300 bg-violet-50/50 dark:bg-violet-500/5 border-l border-slate-200 dark:border-white/10 border-r border-slate-200 dark:border-white/10">{myTime}</td>
                                                 <td className="p-4 text-center font-medium text-slate-600 dark:text-slate-400 bg-slate-100/50 dark:bg-slate-900/20">{avgTime}</td>
                                                 {isAdmin && (
-                                                    <td className="p-3 text-center border-l border-slate-200 dark:border-white/5">
+                                                    <td className="p-3 text-center border-l border-slate-200 dark:border-white/10">
                                                         <button onClick={() => handleOpenEdit(q)} className="px-3 py-1.5 bg-amber-100 text-amber-700 hover:bg-amber-500 hover:text-white dark:bg-amber-500/20 dark:text-amber-400 dark:hover:bg-amber-500 dark:hover:text-white rounded-lg text-sm font-semibold transition-colors">
                                                             編輯
                                                         </button>
@@ -884,8 +973,8 @@
 
                     {/* 編輯彈出視窗 */}
                     {editingQuestion && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-[fadeIn_0.2s_ease-out]">
-                            <div className="glass p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95">
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-md px-4 animate-fade-in-up">
+                            <div className="glass p-6 sm:p-8 rounded-3xl max-w-md w-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 bg-white/70 dark:bg-slate-800/70">
                                 <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-1">編輯評估分數</h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 pb-4 border-b border-slate-200 dark:border-white/10">[{editingQuestion.letter}] {editingQuestion.name}</p>
                                 
@@ -917,10 +1006,10 @@
                                 </div>
 
                                 <div className="flex gap-4">
-                                    <button onClick={() => setEditingQuestion(null)} className="flex-1 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors">
+                                    <button onClick={() => setEditingQuestion(null)} className="flex-1 py-3 rounded-xl font-semibold bg-slate-200/50 hover:bg-slate-300/50 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600/50 dark:text-white backdrop-blur-sm transition-all border border-slate-300 dark:border-white/10">
                                         取消
                                     </button>
-                                    <button onClick={handleSaveForm} className="flex-1 py-3 rounded-xl font-semibold bg-blue-500 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/30 transition-all">
+                                    <button onClick={handleSaveForm} className="flex-1 py-3 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 text-white shadow-lg shadow-blue-500/30 border border-white/20 transition-all">
                                         儲存變更
                                     </button>
                                 </div>
@@ -1145,8 +1234,15 @@
             };
 
             return (
-                <div className="min-h-screen">
-                    <header className="glass border-b border-slate-200 dark:border-white/5 sticky top-0 z-50 bg-white/50 dark:bg-slate-900/80 backdrop-blur-md">
+                <div className="min-h-screen relative font-sans">
+                    {/* 流體背景 */}
+                    <div className="blob-container">
+                        <div className="blob blob-1"></div>
+                        <div className="blob blob-2"></div>
+                        <div className="blob blob-3"></div>
+                    </div>
+
+                    <header className="glass border-b border-slate-200 dark:border-white/10 sticky top-0 z-50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl shadow-sm">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 text-xl font-bold text-slate-800 dark:text-white tracking-wide">
                                 <span className="text-2xl drop-shadow-md">🌍</span>
@@ -1159,7 +1255,7 @@
                                 {/* 亮暗模式切換按鈕 */}
                                 <button 
                                     onClick={toggleTheme} 
-                                    className="p-2 rounded-full text-xl hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
+                                    className="p-2.5 rounded-xl text-xl bg-white/30 dark:bg-slate-800/30 hover:bg-white/50 dark:hover:bg-white/10 backdrop-blur-md border border-slate-200 dark:border-white/10 transition-all shadow-sm hover:scale-105"
                                     title={theme === 'dark' ? '切換為亮色模式' : '切換為暗色模式'}
                                 >
                                     {theme === 'dark' ? '🌞' : '🌙'}
@@ -1167,7 +1263,7 @@
 
                                 {currentUser && (
                                     <>
-                                        <div className={`px-4 py-1.5 rounded-full shadow-inner ${currentUser.isAdmin ? 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/30' : 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`}>
+                                        <div className={`px-4 py-2 rounded-xl shadow-sm border backdrop-blur-md ${currentUser.isAdmin ? 'bg-violet-500/10 text-violet-700 border-violet-200 dark:bg-violet-500/20 dark:text-violet-300 dark:border-violet-500/30' : 'bg-white/30 text-slate-700 border-slate-200 dark:bg-slate-800/50 dark:text-slate-300 dark:border-white/10'}`}>
                                             <span className="opacity-70 mr-2">登入者</span>
                                             {currentUser.name} {currentUser.isAdmin && '(管理員)'}
                                         </div>
@@ -1175,7 +1271,7 @@
                                         {/* 回到登入畫面按鈕 */}
                                         <button 
                                             onClick={handleBackToLogin} 
-                                            className="text-slate-600 dark:text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors flex items-center gap-1 bg-slate-200 dark:bg-white/5 hover:bg-slate-300 dark:hover:bg-white/10 px-3 py-1.5 rounded-lg"
+                                            className="text-slate-600 dark:text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-all flex items-center gap-1 bg-white/30 dark:bg-white/5 hover:bg-white/50 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 px-4 py-2 rounded-xl backdrop-blur-md shadow-sm hover:shadow-md"
                                         >
                                             回到登入畫面
                                         </button>
@@ -1185,27 +1281,27 @@
                         </div>
                     </header>
 
-                    <main className="pt-8 sm:pt-12">
+                    <main className="pt-8 sm:pt-12 relative z-10">
                         {renderContent()}
                     </main>
 
                     {/* 自訂登出確認彈窗 */}
                     {showLogoutModal && (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 animate-[fadeIn_0.2s_ease-out]">
-                            <div className="glass p-8 rounded-3xl max-w-sm w-full shadow-2xl text-center border border-slate-200 dark:border-white/10 bg-white/95 dark:bg-slate-800/95">
-                                <div className="text-5xl mb-4 drop-shadow-md">⚠️</div>
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-md px-4 animate-fade-in-up">
+                            <div className="glass p-8 rounded-3xl max-w-sm w-full shadow-[0_20px_50px_rgba(0,0,0,0.3)] text-center border border-white/20 bg-white/70 dark:bg-slate-800/70">
+                                <div className="text-5xl mb-4 drop-shadow-md animate-bounce">⚠️</div>
                                 <h3 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">確定要登出嗎？</h3>
-                                <p className="text-slate-600 dark:text-slate-400 mb-8 font-medium">未儲存的進度將會遺失。</p>
+                                <p className="text-slate-600 dark:text-slate-300 mb-8 font-medium">未儲存的進度將會遺失。</p>
                                 <div className="flex gap-4 justify-center">
                                     <button 
                                         onClick={() => setShowLogoutModal(false)} 
-                                        className="px-6 py-3 rounded-xl font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-white transition-colors w-1/2"
+                                        className="px-6 py-3 rounded-xl font-semibold bg-slate-200/50 hover:bg-slate-300/50 text-slate-700 dark:bg-slate-700/50 dark:hover:bg-slate-600/50 dark:text-white backdrop-blur-sm border border-slate-300 dark:border-white/10 transition-all w-1/2"
                                     >
                                         取消
                                     </button>
                                     <button 
                                         onClick={confirmLogout} 
-                                        className="px-6 py-3 rounded-xl font-semibold bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/30 transition-all w-1/2"
+                                        className="px-6 py-3 rounded-xl font-semibold bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white shadow-lg shadow-rose-500/30 border border-white/20 transition-all w-1/2"
                                     >
                                         確定
                                     </button>
