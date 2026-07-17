@@ -178,12 +178,10 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // ==================== GAS 雲端資料庫設定區 ====================
-        // 請貼上您在 Google Apps Script 部署完成後產生的「網頁應用程式網址」！
-        // 若留空、或未完成部署，系統會極速自動降級並使用安全的 LocalStorage（本地暫存）模式。
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwVNgDtNffdAMXROwmiVkwkgdEcAlqK88LqGL9FWcnjeE3GCcn7UkNJ5PfgdGv4dw97Ew/exec"; 
-
         const { useState, useEffect, useRef } = React;
+
+        // --- GAS 後端網址設定 ---
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxjywDMl0o2n4WP_en-OZPfk_g507wxDGz7dRSHkvn0BUaaCRfJBbKk-Lrsr7LwX_f6/exec"; 
 
         // --- 0. 員工資料表 ---
         const employeesData = [
@@ -229,13 +227,13 @@
             { id: 2, type: "轉型風險", category: "政府和法規", name: "國家淨零排放法規與綠電合規挑戰", desc: "響應國內 2050 淨零碳排政策，主管機關與科學園區對用電大戶或製造業的綠電使用與減碳配額要求更趨嚴格，法遵壓力提升。" },
             { id: 3, type: "轉型風險", category: "政府和法規", name: "永續揭露準則（IFRS S2）強制確信風險", desc: "配合金管會永續發展路徑圖與 IFRS 框架，需投入額外資源建構溫室氣體三範疇盤查與氣候財務揭露，面臨確信成本及揭露合規壓力。" },
             { id: 4, type: "轉型風險", category: "技術", name: "綠色低碳設備研發轉型失敗風險", desc: "若未能及時跟進市場對低碳、高效能機械設備之期待，可能面臨新技術研發投入無法回收之財務損失。" },
-            { id: 5, type: "轉型風險", category: "技術", name: "低碳製造製程與設備轉型資本支出", desc: "廠區導入節能設備、製程電氣化升級 or 更換低碳原材料時，短期內需投入高額的資本支出與產線調整成本。" },
+            { id: 5, type: "轉型風險", category: "技術", name: "低碳製造製程與設備轉型資本支出", desc: "廠區導入節能設備、製程電氣化升級或更換低碳原材料時，短期內需投入高額的資本支出與產線調整成本。" },
             { id: 6, type: "轉型風險", category: "市場", name: "原物料與供應鏈碳溢價成本上漲", desc: "鋼材、伺服馬達、精密電子元件等關鍵上游材料，因碳關稅或綠色生產成本提高而調漲價格，壓縮設備組裝製造之毛利率。" },
             { id: 7, type: "轉型風險", category: "名譽", name: "永續承諾與減碳目標未達之品牌風險", desc: "若未能按期達成對外公開之永續宣言或客戶要求之減碳目標，可能降低國際指標性大廠之長期合作意願與信賴度。" },
             { id: 8, type: "實體風險", category: "立即性", name: "急性極端氣候對生產基地之實體破壞", desc: "強烈颱風、突發性暴雨或土石流等災害，可能導致廠房硬體受損、區域停電，進而造成精密組裝產線停工或在製品毀損。" },
             { id: 9, type: "實體風險", category: "立即性", name: "全球極端氣候引發價值鏈與物流中斷", desc: "上游關鍵零部件供應商因天災停工，或國際海空運樞紐因極端氣候癱瘓，導致零組件斷鏈、延遲交期及衍生的違約財務損失。" },
             { id: 10, type: "實體風險", category: "長期性", name: "氣候變遷致區域乾旱與水資源短缺", desc: "長期降雨模式改變引發台灣季節性缺水危機，雖設備組裝製程用水量有限，但仍可能受整體限水政策波及營運。" },
-            { id: 11, type: "實體風險", category: "長期性", name: "平均氣溫攀升致精密恆溫廠房能耗激增", desc: "全球氣溫持續升高，導致高精密檢測設備所需的恆溫恆濕組裝測試區，空調電力負荷大幅增加，推推升日常營運電費。" },
+            { id: 11, type: "實體風險", category: "長期性", name: "平均氣溫攀升致精密恆溫廠房能耗激增", desc: "全球氣溫持續升高，導致高精密檢測設備所需的恆溫恆濕組裝測試區，空調電力負荷大幅增加，推升日常營運電費。" },
             { id: 12, type: "機會", category: "資源效率", name: "精密製造產線低碳能源之導入", desc: "逐步將廠區內高耗能製程設備替換為高效能綠色機組，運用智慧微電網優化廠區用電負載，降低能源支出。" },
             { id: 13, type: "機會", category: "資源效率", name: "製程廢棄物回收與循環經濟模式", desc: "建立廠內金屬切削廢料、廢切削液等原材料回收與再製機制，提高資源周轉率，進而降低新物料採購成本。" },
             { id: 14, type: "機會", category: "資源效率", name: "廠區與價值鏈水資源管理優化", desc: "導入廠內雨水回收、中水循環系統，優化民生及測試用水效率，降低對外部自來水水源之依賴與水費成本。" },
@@ -285,7 +283,7 @@
                     5: "帶來革命性或全面性的新型態商業商機（如成功開創低碳節能檢測設備之獨家新市場）。",
                     4: "對核心產品升級與綠色轉型策略帶來顯著效益，帶動整體營收與產值增長。",
                     3: "對特定產品線有實質的商機與營運優化效益。",
-                    2: "對公司內部特定部門之流程優化、廢棄物減量 or 能源節約產生局部正面效益。",
+                    2: "對公司內部特定部門之流程優化、廢棄物減量或能源節約產生局部正面效益。",
                     1: "對公司或特定部門幾乎沒有帶來任何商業策略與商機上的影響。"
                 },
                 chain: {
@@ -305,7 +303,7 @@
             }
         };
 
-        // ==================== 元件（已優化 UI 支援雙主題與高質感毛玻璃擬態） ====================
+        // ==================== 元件（已優化 UI 支援雙主題） ====================
 
         const LoginView = ({ onLogin }) => {
             const [inputId, setInputId] = useState("");
@@ -843,7 +841,7 @@
                 window.legendData = legendData;
                 
                 return () => { Chart.unregister(quadrantPlugin, drawLabelsPlugin); if (chartInstance.current) chartInstance.current.destroy(); }
-            }, [avgAnswers, questions, theme]); 
+            }, [avgAnswers, questions, theme]); // 加入 theme dependency，切換主題時重新繪圖
 
             return (
                 <div className="max-w-7xl mx-auto px-4 pb-20 animate-fade-in-up">
@@ -1029,10 +1027,9 @@
         const App = () => {
             const [step, setStep] = useState(0); 
             const [currentUser, setCurrentUser] = useState(null);
-            const [isLoading, setIsLoading] = useState(false);
             
-            // 雲端資料庫連線狀態：'local' (本地模式) | 'connected' (已連線) | 'error' (同步失敗，自動降級至本地)
-            const [gasStatus, setGasStatus] = useState('local');
+            // 處理 GAS 同步狀態
+            const [gasInitDone, setGasInitDone] = useState(false);
 
             // 主題狀態 (亮/暗)
             const [theme, setTheme] = useState('dark');
@@ -1064,66 +1061,49 @@
             const [adminTargetUser, setAdminTargetUser] = useState(null);
             const [adminTargetAnswers, setAdminTargetAnswers] = useState({});
 
-            // 跨域呼叫 GAS Helper 函式
-            const fetchFromGAS = async (action, body = {}) => {
-                // 安全機制：若 URL 未正確設定、或使用原廠預設範例 ID，一律自動直接靜默切換至 Local 模式，避免瀏覽器丟出 Failed to fetch error 刷紅屏
-                const isTemplateUrl = !GAS_URL || GAS_URL.includes("AKfycbwVNgDtNffdAMXROwmiVkwkgdEcAlqK88LqGL9FWcnjeE3GCcn7UkNJ5PfgdGv4dw97Ew") || GAS_URL.trim() === "";
-                if (isTemplateUrl) {
-                    setGasStatus('local');
-                    return null;
-                }
-
-                try {
-                    if (action === "read") {
-                        const response = await fetch(`${GAS_URL}?action=read`);
-                        if (!response.ok) throw new Error("HTTP " + response.status);
-                        const result = await response.json();
-                        setGasStatus('connected');
-                        return result.data;
-                    } else {
-                        // 寫入/刪除操作使用 POST
-                        const response = await fetch(GAS_URL, {
-                            method: "POST",
-                            headers: { "Content-Type": "text/plain" },
-                            body: JSON.stringify({ action, ...body })
-                        });
-                        if (!response.ok) throw new Error("HTTP " + response.status);
-                        try {
-                            const text = await response.text();
-                            setGasStatus('connected');
-                            return JSON.parse(text);
-                        } catch(e) {
-                            setGasStatus('connected');
-                            return { status: "success" }; // 容錯 fallback
-                        }
+            // 初始化讀取 GAS 資料庫
+            useEffect(() => {
+                const fetchFromGAS = async () => {
+                    if (!GAS_URL || GAS_URL.includes("請在此貼上您的_GAS_網址")) {
+                        setGasInitDone(true);
+                        return;
                     }
-                } catch (err) {
-                    // 使用 console.warn 取代 console.error，防止協作平台的偵錯器在畫面上跳出紅色的 [CONSOLE_ERROR] 視窗
-                    console.warn("GAS 伺服器同步暫時不可用，系統已自動為您切換至【本地安全暫存模式】進行操作（數據儲存於您的瀏覽器）: ", err.message);
-                    setGasStatus('error');
-                    return null;
+                    try {
+                        const response = await fetch(`${GAS_URL}?action=read`);
+                        const data = await response.json();
+                        if (data && data.success && data.submissions) {
+                            localStorage.setItem('climate_survey_submissions', JSON.stringify(data.submissions));
+                        }
+                    } catch (error) {
+                        console.error("GAS 資料讀取失敗:", error);
+                    }
+                    setGasInitDone(true);
+                };
+                fetchFromGAS();
+            }, []);
+
+            // 同步資料上傳至 GAS
+            const syncToGAS = async (dataToSync) => {
+                if (!GAS_URL || GAS_URL.includes("請在此貼上您的_GAS_網址")) return;
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: "sync_all", submissions: dataToSync })
+                    });
+                } catch (error) {
+                    console.error("GAS 資料同步失敗:", error);
                 }
             };
 
-            const loadGlobalData = async () => {
-                setIsLoading(true);
-                let submissions = [];
-
-                const data = await fetchFromGAS("read");
-                if (data) {
-                    submissions = data;
-                } else {
-                    // GAS 連線失敗時 fallback 到本地
-                    submissions = JSON.parse(localStorage.getItem('climate_survey_submissions') || '[]');
-                }
-
+            const loadGlobalData = () => {
+                const existing = JSON.parse(localStorage.getItem('climate_survey_submissions') || '[]');
                 const newAvg = {};
                 questionsData.forEach(q => { newAvg[q.id] = { image: 0, biz: 0, chain: 0, time: 0 }; });
                 
-                if (submissions.length > 0) {
+                if (existing.length > 0) {
                     questionsData.forEach(q => {
                         let sumI = 0, sumB = 0, sumC = 0, sumT = 0, count = 0;
-                        submissions.forEach(sub => {
+                        existing.forEach(sub => {
                             if(sub.answers && sub.answers[q.id]) {
                                 sumI += sub.answers[q.id].image;
                                 sumB += sub.answers[q.id].biz;
@@ -1137,92 +1117,52 @@
                         }
                     });
                 }
-                setIsLoading(false);
-                return { submissions, avgAnswers: newAvg };
+                return { submissions: existing, avgAnswers: newAvg };
             };
 
-            // 當開啟代碼/加載網頁時，自動同步讀取試算表
-            useEffect(() => {
-                const initSync = async () => {
-                    const result = await loadGlobalData();
-                    setAllSubmissions(result.submissions);
-                    setAvgAnswers(result.avgAnswers);
-                    setNumSubmissions(result.submissions.length);
-                };
-                initSync();
-            }, []);
-
-            const handleLogin = async (user) => {
+            const handleLogin = (user) => {
                 setCurrentUser(user);
-                
-                // 再次即時與雲端重新同步一次
-                const result = await loadGlobalData();
-                setAllSubmissions(result.submissions);
-                setAvgAnswers(result.avgAnswers);
-                setNumSubmissions(result.submissions.length);
-
+                const globalData = loadGlobalData();
                 if (user.isAdmin) {
+                    setAllSubmissions(globalData.submissions);
+                    setAvgAnswers(globalData.avgAnswers);
+                    setNumSubmissions(globalData.submissions.length);
                     setStep(30); 
                 } else {
-                    // 防止重複填寫安全檢查：
-                    // 在一般員工登入時，自動檢查該員工是否已有提交紀錄。
-                    const hasSubmitted = result.submissions.some(sub => String(sub.userId) === String(user.id));
+                    // 防止重複填寫：系統自動檢查該員工是否已有提交紀錄
+                    const hasSubmitted = globalData.submissions.some(sub => sub.userId === user.id);
                     if (hasSubmitted) {
-                        // 若有，將直接引導至「完成畫面」，只能查看結果而無法重新評估。
-                        const userSub = result.submissions.find(sub => String(sub.userId) === String(user.id));
+                        // 若有，讀取該使用者的紀錄以供後續對比
+                        const userSub = globalData.submissions.find(sub => sub.userId === user.id);
                         setAnswers(userSub.answers);
-                        setStep(22); 
+                        setAvgAnswers(globalData.avgAnswers);
+                        setNumSubmissions(globalData.submissions.length);
+                        // 直接引導至「完成畫面」，只能查看結果而無法重新評估
+                        setStep(22);
                     } else {
                         setStep(1);
                     }
                 }
             };
 
-            const handleFinishAll = async (finalAnswers) => {
-                setIsLoading(true);
-                const timestamp = new Date().toISOString();
-                
-                // 整理一份包含詳細議題內容的陣列，提供 GAS 個別工作表自動展開寫入
-                const detailedAnswersList = Object.keys(finalAnswers).map(qId => {
-                    const q = questionsData.find(item => String(item.id) === String(qId));
-                    const ans = finalAnswers[qId];
-                    return {
-                        id: qId,
-                        name: q ? q.name : "",
-                        category: q ? q.category : "",
-                        type: q ? q.type : "",
-                        image: ans.image,
-                        biz: ans.biz,
-                        chain: ans.chain,
-                        time: ans.time
-                    };
-                });
-
-                const subData = {
+            const handleFinishAll = (finalAnswers) => {
+                const globalData = loadGlobalData();
+                const filtered = globalData.submissions.filter(sub => sub.userId !== currentUser.id);
+                filtered.push({
                     userId: currentUser.id,
                     userName: currentUser.name,
                     answers: finalAnswers,
-                    timestamp: timestamp
-                };
-
-                // 當填寫結束時，新資料內容自動上傳更新到 Google 試算表中
-                await fetchFromGAS("save", { data: subData, detailedAnswers: detailedAnswersList });
-
-                // 同步本地備用機制
-                const localData = JSON.parse(localStorage.getItem('climate_survey_submissions') || '[]');
-                const filtered = localData.filter(sub => String(sub.userId) !== String(currentUser.id));
-                filtered.push(subData);
+                    timestamp: new Date().toISOString()
+                });
                 localStorage.setItem('climate_survey_submissions', JSON.stringify(filtered));
+                syncToGAS(filtered); // 結束時自動上傳更新至 GAS
 
-                // 重新拉取最新平均結果，全面自動同步
-                const result = await loadGlobalData();
-                setAllSubmissions(result.submissions);
-                setAvgAnswers(result.avgAnswers);
-                setNumSubmissions(result.submissions.length);
+                const newGlobalData = loadGlobalData();
+                setAvgAnswers(newGlobalData.avgAnswers);
+                setNumSubmissions(newGlobalData.submissions.length);
                 
                 setStep(22);
                 window.scrollTo(0, 0);
-                setIsLoading(false);
             };
 
             const handleSaveAnswer = (ans) => {
@@ -1250,55 +1190,39 @@
                 window.scrollTo(0, 0);
             };
 
-            // 管理員：刪除選中的紀錄，並自動同步雲端與本地端
-            const handleDeleteSubmissions = async (userIds) => {
-                setIsLoading(true);
-                await fetchFromGAS("delete", { userIds: userIds });
+            // 管理員：刪除選中的紀錄
+            const handleDeleteSubmissions = (userIds) => {
+                const globalData = loadGlobalData();
+                const newSubmissions = globalData.submissions.filter(sub => !userIds.includes(sub.userId));
+                localStorage.setItem('climate_survey_submissions', JSON.stringify(newSubmissions));
+                syncToGAS(newSubmissions); // 刪除時自動同步至 GAS
                 
-                const localData = JSON.parse(localStorage.getItem('climate_survey_submissions') || '[]');
-                const filtered = localData.filter(sub => !userIds.includes(sub.userId));
-                localStorage.setItem('climate_survey_submissions', JSON.stringify(filtered));
-                
-                const result = await loadGlobalData();
-                setAllSubmissions(result.submissions);
-                setAvgAnswers(result.avgAnswers);
-                setNumSubmissions(result.submissions.length);
-                setIsLoading(false);
+                const newGlobalData = loadGlobalData();
+                setAllSubmissions(newGlobalData.submissions);
+                setAvgAnswers(newGlobalData.avgAnswers);
+                setNumSubmissions(newGlobalData.submissions.length);
             };
 
-            // 管理員：編輯單一員工單項題目分數，並自動同步雲端與本地端
-            const handleAdminEditAnswer = async (questionId, newAnswerObj) => {
-                setIsLoading(true);
-                const localData = JSON.parse(localStorage.getItem('climate_survey_submissions') || '[]');
-                const targetIdx = localData.findIndex(sub => String(sub.userId) === String(adminTargetUser.id));
+            // 管理員：編輯單一員工單項題目分數
+            const handleAdminEditAnswer = (questionId, newAnswerObj) => {
+                const globalData = loadGlobalData();
+                const targetIdx = globalData.submissions.findIndex(sub => sub.userId === adminTargetUser.id);
                 
                 if (targetIdx !== -1) {
-                    localData[targetIdx].answers[questionId] = newAnswerObj;
-                    localStorage.setItem('climate_survey_submissions', JSON.stringify(localData));
+                    // 更新 localStorage
+                    globalData.submissions[targetIdx].answers[questionId] = newAnswerObj;
+                    localStorage.setItem('climate_survey_submissions', JSON.stringify(globalData.submissions));
+                    syncToGAS(globalData.submissions); // 編輯後自動同步至 GAS
                     
-                    const detailedAnswersList = Object.keys(localData[targetIdx].answers).map(qId => {
-                        const q = questionsData.find(item => String(item.id) === String(qId));
-                        const ans = localData[targetIdx].answers[qId];
-                        return {
-                            id: qId,
-                            name: q ? q.name : "",
-                            category: q ? q.category : "",
-                            type: q ? q.type : "",
-                            image: ans.image,
-                            biz: ans.biz,
-                            chain: ans.chain,
-                            time: ans.time
-                        };
-                    });
-                    await fetchFromGAS("save", { data: localData[targetIdx], detailedAnswers: detailedAnswersList });
+                    // 重新載入全域資料
+                    const newGlobalData = loadGlobalData();
+                    setAllSubmissions(newGlobalData.submissions);
+                    setAvgAnswers(newGlobalData.avgAnswers);
+                    setNumSubmissions(newGlobalData.submissions.length);
                     
-                    const result = await loadGlobalData();
-                    setAllSubmissions(result.submissions);
-                    setAvgAnswers(result.avgAnswers);
-                    setNumSubmissions(result.submissions.length);
-                    setAdminTargetAnswers(localData[targetIdx].answers);
+                    // 更新當前畫面檢視的答案
+                    setAdminTargetAnswers(globalData.submissions[targetIdx].answers);
                 }
-                setIsLoading(false);
             };
 
             // 控制登出確認彈窗的狀態
@@ -1362,16 +1286,6 @@
                         <div className="blob blob-3"></div>
                     </div>
 
-                    {/* 全域 Loading Overlay */}
-                    {isLoading && (
-                        <div className="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-md flex items-center justify-center">
-                            <div className="glass p-8 rounded-3xl text-center flex flex-col items-center">
-                                <div className="animate-spin rounded-full h-14 w-14 border-4 border-slate-200 dark:border-slate-800 border-t-blue-500 mb-4"></div>
-                                <p className="text-slate-800 dark:text-white font-bold text-lg">正在同步雲端資料庫中...</p>
-                            </div>
-                        </div>
-                    )}
-
                     <header className="glass border-b border-slate-200 dark:border-white/10 sticky top-0 z-50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-2xl shadow-sm">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 text-xl font-bold text-slate-800 dark:text-white tracking-wide">
@@ -1382,29 +1296,6 @@
                             </div>
                             
                             <div className="flex items-center gap-4 text-sm font-medium">
-                                {/* 資料庫連線狀態指示燈 */}
-                                <div className={`px-3 py-1.5 rounded-full flex items-center gap-2 border text-xs font-bold ${
-                                    gasStatus === 'connected' 
-                                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-500/20 dark:text-emerald-400' 
-                                        : gasStatus === 'error'
-                                            ? 'bg-rose-500/10 text-rose-600 border-rose-500/20 dark:bg-rose-500/20 dark:text-rose-400'
-                                            : 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400'
-                                }`}>
-                                    <span className={`w-2.5 h-2.5 rounded-full ${
-                                        gasStatus === 'connected' 
-                                            ? 'bg-emerald-500 animate-pulse' 
-                                            : gasStatus === 'error'
-                                                ? 'bg-rose-500'
-                                                : 'bg-amber-500'
-                                    }`}></span>
-                                    {gasStatus === 'connected' 
-                                        ? '☁️ 雲端已連線' 
-                                        : gasStatus === 'error'
-                                            ? '⚠️ 雲端同步失敗 (本地模式)'
-                                            : '💾 本地暫存模式'
-                                    }
-                                </div>
-
                                 {/* 亮暗模式切換按鈕 */}
                                 <button 
                                     onClick={toggleTheme} 
@@ -1435,7 +1326,15 @@
                     </header>
 
                     <main className="pt-8 sm:pt-12 relative z-10">
-                        {renderContent()}
+                        {!gasInitDone ? (
+                            <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-fade-in-up">
+                                <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-200 dark:border-slate-700 border-t-emerald-500 dark:border-t-emerald-400 mb-6"></div>
+                                <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">資料讀取中...</h2>
+                                <p className="text-slate-500 dark:text-slate-400">正在載入最新數據，請稍候</p>
+                            </div>
+                        ) : (
+                            renderContent()
+                        )}
                     </main>
 
                     {/* 自訂登出確認彈窗 */}
