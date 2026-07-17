@@ -312,16 +312,11 @@
 
             const handleLogin = (e) => {
                 e.preventDefault();
-                
-                // 處理輸入值：轉字串、去空白、去掉開頭所有的 0
-                const processedInput = String(inputId).trim().replace(/^0+/, '');
-                
-                // 尋找員工時，也把資料庫的工號去掉開頭的 0 來比對
-                const emp = employeesData.find(e => e.id.replace(/^0+/, '') === processedInput);
-                
+                const emp = employeesData.find(e => e.id === inputId.trim());
                 if (emp) onLogin(emp);
                 else setError("找不到此員工代碼，請確認後重新輸入");
             };
+
 
             return (
                 <div className="min-h-[85vh] flex items-center justify-center p-6 animate-fade-in-up">
