@@ -1,1058 +1,161 @@
 <!DOCTYPE html>
-<html lang="zh-TW" class="light">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>企業級通訊錄與分機查詢系統</title>
-    
-    <!-- 引入 Tailwind CSS 進行 RWD 與快速排版 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 引入 Phosphor Icons (高級質感圖標) -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <!-- 引入 SheetJS 用於 XLSX 匯出/匯入 -->
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
-    <!-- Tailwind 設定 (包含自訂顏色與暗色模式支援) -->
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'SF Pro Display', 'Noto Sans TC', 'sans-serif'],
-                    },
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            900: '#0c4a6e',
-                        },
-                        glass: {
-                            light: 'rgba(255, 255, 255, 0.7)',
-                            dark: 'rgba(30, 41, 59, 0.7)'
-                        }
-                    },
-                    boxShadow: {
-                        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
-                        'glow': '0 0 20px rgba(14, 165, 233, 0.4)',
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
-
-        body {
-            font-family: 'Inter', 'Noto Sans TC', sans-serif;
-            transition: background-color 0.5s ease, color 0.5s ease;
-            overflow-x: hidden;
-            min-height: 100vh;
-        }
-
-        /* 背景流體動畫 (Fluid Mesh Gradient) */
-        .bg-fluid {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1;
-            background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
-            overflow: hidden;
-            transition: background 0.8s ease;
-        }
-        
-        .dark .bg-fluid {
-            background: linear-gradient(120deg, #0f172a 0%, #1e293b 100%);
-        }
-
-        .bg-fluid::before, .bg-fluid::after {
-            content: "";
-            position: absolute;
-            width: 60vw;
-            height: 60vw;
-            border-radius: 50%;
-            filter: blur(100px);
-            opacity: 0.5;
-            animation: float 20s infinite ease-in-out alternate;
-        }
-
-        .bg-fluid::before {
-            background: rgba(14, 165, 233, 0.2); /* Primary blue */
-            top: -10%;
-            left: -10%;
-        }
-
-        .bg-fluid::after {
-            background: rgba(168, 85, 247, 0.15); /* Purple accent */
-            bottom: -20%;
-            right: -10%;
-            animation-delay: -10s;
-        }
-
-        .dark .bg-fluid::before { background: rgba(14, 165, 233, 0.15); }
-        .dark .bg-fluid::after { background: rgba(168, 85, 247, 0.1); }
-
-        @keyframes float {
-            0% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(10%, 15%) scale(1.1); }
-            100% { transform: translate(-5%, 10%) scale(0.9); }
-        }
-
-        /* 玻璃擬態 (Glassmorphism) */
-        .glass-panel {
-            background: var(--glass-bg, rgba(255, 255, 255, 0.65));
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
-        .dark .glass-panel {
-            background: var(--glass-bg, rgba(30, 41, 59, 0.65));
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-        }
-
-        /* 互動效果 */
-        .hover-lift:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px -10px rgba(14, 165, 233, 0.3);
-            border-color: rgba(14, 165, 233, 0.4);
-        }
-
-        .icon-spin:hover i {
-            animation: spin-slow 1s linear infinite;
-        }
-
-        @keyframes spin-slow {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* 載入骨架屏動畫 */
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: loading 1.5s infinite;
-        }
-        .dark .skeleton {
-            background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
-            background-size: 200% 100%;
-        }
-
-        @keyframes loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        /* 捲軸美化 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        
-        /* 隱藏元素用 */
-        .hidden-fade {
-            opacity: 0;
-            pointer-events: none;
-            position: absolute;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>裝置專屬 ID</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card-bg: #1a1d24;
+    --accent: #5b8cff;
+    --text: #eef1f8;
+    --muted: #8b93a7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top, #1c2030, #0b0d12 70%);
+    font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    color: var(--text);
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 40px 36px;
+    width: min(90vw, 420px);
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  }
+  .label {
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .device-id {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--accent);
+    word-break: break-all;
+    background: rgba(91,140,255,0.08);
+    border: 1px solid rgba(91,140,255,0.25);
+    border-radius: 10px;
+    padding: 16px 12px;
+    margin-bottom: 16px;
+    font-family: "SF Mono", Consolas, monospace;
+  }
+  .hint {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .copy-btn {
+    margin-top: 18px;
+    background: var(--accent);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .copy-btn:hover { opacity: 0.85; }
+  .copy-btn:active { transform: scale(0.97); }
+</style>
 </head>
-<body class="text-gray-800 dark:text-gray-200">
+<body>
+
+<div class="card">
+  <div class="label">您的裝置 ID</div>
+  <div class="device-id" id="deviceIdDisplay">產生中...</div>
+  <button class="copy-btn" onclick="copyId()">複製 ID</button>
+  <div class="hint">此 ID 會儲存在本機瀏覽器中，<br>只要不清除瀏覽器資料，每次開啟都會顯示相同 ID。</div>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = "site_device_id_v1";
+
+  // 簡單雜湊函式，把字串轉成穩定的 hex 值
+  function hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const chr = str.charCodeAt(i);
+      hash = (hash << 5) - hash + chr;
+      hash |= 0; // 轉成 32bit 整數
+    }
+    return Math.abs(hash).toString(16);
+  }
+
+  // 用瀏覽器 / 裝置特徵組成指紋，作為第一次產生 ID 的種子
+  // 注意：這只能在「同一台裝置的同一個瀏覽器」保持一致，
+  // 無法做到跨瀏覽器或換瀏覽器仍是同一組 ID（純前端技術上的限制）。
+  function getDeviceFingerprint() {
+    const parts = [];
+
+    parts.push(navigator.userAgent || "");
+    parts.push(navigator.language || "");
+    parts.push(String(screen.width) + "x" + String(screen.height));
+    parts.push(String(screen.colorDepth || ""));
+    parts.push(String(new Date().getTimezoneOffset()));
+    parts.push(String(navigator.hardwareConcurrency || ""));
+
+    // Canvas 指紋：不同顯示卡/字型渲染會產生些微差異，增加穩定的獨特性
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.textBaseline = "top";
+      ctx.font = "14px Arial";
+      ctx.fillText("device-fingerprint-🔒", 2, 2);
+      parts.push(canvas.toDataURL());
+    } catch (e) {
+      parts.push("no-canvas");
+    }
+
+    return parts.join("||");
+  }
+
+  function generateDeviceId() {
+    const fingerprint = getDeviceFingerprint();
+    const hash1 = hashString(fingerprint);
+    const hash2 = hashString(fingerprint.split("").reverse().join(""));
+    return (hash1 + hash2).toUpperCase().slice(0, 16);
+  }
+
+  function getOrCreateDeviceId() {
+    let id = localStorage.getItem(STORAGE_KEY);
+    if (!id) {
+      id = generateDeviceId();
+      localStorage.setItem(STORAGE_KEY, id);
+    }
+    return id;
+  }
+
+  const deviceId = getOrCreateDeviceId();
+  document.getElementById("deviceIdDisplay").textContent = deviceId;
+
+  window.copyId = function () {
+    navigator.clipboard.writeText(deviceId).then(() => {
+      const btn = document.querySelector(".copy-btn");
+      const original = btn.textContent;
+      btn.textContent = "已複製 ✓";
+      setTimeout(() => (btn.textContent = original), 1500);
+    });
+  };
+
+  // 方便其他程式碼取用
+  window.DEVICE_ID = deviceId;
+})();
+</script>
 
-    <!-- 動態背景 -->
-    <div class="bg-fluid"></div>
-
-    <nav class="fixed w-full top-0 z-50 glass-panel border-b-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo 區域 -->
-                <div class="flex-shrink-0 flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-                    <img src="https://lh3.googleusercontent.com/d/1LE-JxvPaJfwPYc40pIaYRfxxjhsav-kJ" alt="Company Logo" class="h-10 object-contain drop-shadow-md">
-                    <span class="font-bold text-lg hidden sm:block tracking-wide">大量科技通訊錄</span>
-                </div>
-
-                <!-- 右側控制區 -->
-                <div class="flex items-center gap-4">
-                    <!-- 暗/亮色切換鈕 -->
-                    <button id="themeToggle" class="p-2 rounded-full glass-panel hover-lift transition-all" aria-label="切換主題">
-                        <i class="ph ph-moon text-xl block dark:hidden"></i>
-                        <i class="ph ph-sun text-xl hidden dark:block text-yellow-400"></i>
-                    </button>
-                    
-                    <!-- 管理員按鈕 -->
-                    <button id="adminLoginBtn" class="flex items-center gap-2 px-4 py-2 rounded-full glass-panel hover-lift text-sm font-medium transition-all">
-                        <i class="ph ph-lock-key"></i>
-                        <span id="adminBtnText">管理員登入</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <main class="pt-28 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto min-h-screen flex flex-col">
-        
-        <!-- Hero 區域 -->
-        <div class="text-center mb-10 relative">
-            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-                尋找聯絡人，<span class="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-purple-500">一秒搞定</span>
-            </h1>
-            <p class="text-gray-500 dark:text-gray-400 text-sm sm:text-base max-w-2xl mx-auto">
-                支援部門、姓名、分機號碼等模糊搜尋。尋找跨部門協作窗口的最快途徑。(大量生技撥打555或558後再按分機)
-            </p>
-            <p id="totalStats" class="mt-3 text-sm font-semibold text-primary-600 dark:text-primary-400">
-                <!-- 由 JS 動態產生：共 XX 位聯絡人．XX 個單位 -->
-            </p>
-        </div>
-
-        <!-- 搜尋列 -->
-        <div class="max-w-3xl mx-auto w-full relative mb-8 z-20">
-            <div class="glass-panel p-2 rounded-2xl flex items-center shadow-lg focus-within:shadow-glow focus-within:border-primary-500 transition-all duration-300">
-                <i class="ph ph-magnifying-glass text-2xl text-gray-400 ml-3"></i>
-                <input type="text" id="searchInput" 
-                    class="w-full bg-transparent border-none focus:ring-0 px-4 py-3 text-lg outline-none placeholder-gray-400 dark:placeholder-gray-500" 
-                    placeholder="輸入單位名稱、人名、分機號碼或關鍵字...">
-                
-                <!-- 語音搜尋按鈕 -->
-                <button id="micBtn" class="p-2 mr-2 text-gray-400 hover:text-primary-500 transition-colors" title="語音搜尋">
-                    <i class="ph ph-microphone text-2xl"></i>
-                </button>
-
-                <!-- 僅顯示窗口按鈕 -->
-                <button id="filterWindowBtn" class="whitespace-nowrap px-4 py-2 rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 font-medium text-sm transition-colors flex items-center gap-1 border border-amber-200 dark:border-amber-800/50">
-                    <i class="ph-fill ph-star"></i>
-                    <span class="hidden sm:inline">聯絡窗口</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- 管理員操作區 (預設隱藏) -->
-        <div id="adminPanel" class="max-w-3xl mx-auto w-full mb-6 hidden glass-panel p-4 rounded-xl flex flex-wrap gap-3 justify-center items-center border border-primary-500/30">
-            <span class="text-sm font-semibold text-primary-600 dark:text-primary-400 mr-2"><i class="ph ph-shield-check mr-1"></i>管理模式</span>
-            <button id="addPersonBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium shadow-md transition-colors flex items-center gap-2">
-                <i class="ph ph-user-plus"></i> 新增人員
-            </button>
-            <button id="exportBtn" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium shadow-md transition-colors flex items-center gap-2">
-                <i class="ph ph-download-simple"></i> 匯出 XLSX
-            </button>
-            <label class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium shadow-md transition-colors flex items-center gap-2 cursor-pointer">
-                <i class="ph ph-upload-simple"></i> 匯入覆蓋
-                <input type="file" id="importFile" accept=".xlsx, .xls" class="hidden">
-            </label>
-        </div>
-
-        <!-- 部門快速過濾標籤 -->
-        <div class="mb-8 flex flex-wrap justify-center gap-2" id="deptFilters">
-            <!-- 標籤將由 JS 動態生成 -->
-        </div>
-
-        <!-- 資料卡片網格 -->
-        <div class="flex-1">
-            <!-- 載入中骨架屏 -->
-            <div id="loadingState" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <!-- 生成 8 個骨架卡片 -->
-            </div>
-
-            <!-- 實際卡片容器 -->
-            <div id="cardsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 hidden">
-                <!-- 卡片將由 JS 動態生成 -->
-            </div>
-            
-            <!-- 無結果提示 -->
-            <div id="noResults" class="hidden flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400">
-                <i class="ph ph-ghost text-6xl mb-4 opacity-50"></i>
-                <p class="text-lg">找不到符合條件的聯絡人</p>
-            </div>
-        </div>
-    </main>
-
-    <!-- 管理員密碼 Modal -->
-    <div id="loginModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="glass-panel p-8 rounded-2xl w-full max-w-sm transform scale-95 transition-transform duration-300" id="loginModalContent">
-            <h3 class="text-xl font-bold mb-2 flex items-center gap-2"><i class="ph ph-lock text-primary-500"></i> 管理員登入</h3>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">請輸入管理密碼以啟用編輯、匯出與匯入功能。</p>
-            <input type="password" id="adminPwdInput" class="w-full px-4 py-2 mb-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all" placeholder="輸入密碼">
-            <div class="flex gap-3 justify-end">
-                <button id="cancelLoginBtn" class="px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">取消</button>
-                <button id="confirmLoginBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors shadow-md shadow-primary-500/30">登入</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 人員編輯/新增 Modal -->
-    <div id="personModal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
-        <div class="glass-panel p-6 sm:p-8 rounded-2xl w-full max-w-md transform scale-95 transition-transform duration-300" id="personModalContent">
-            <h3 class="text-xl font-bold mb-4 flex items-center gap-2" id="personModalTitle"><i class="ph ph-user-plus text-primary-500"></i> 新增人員</h3>
-            <form id="personForm" class="space-y-4">
-                <input type="hidden" id="editPersonId">
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">部門單位 *</label>
-                    <input type="text" id="editDept" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">姓名 *</label>
-                    <input type="text" id="editName" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">分機號碼 *</label>
-                    <input type="text" id="editExt" required class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-gray-800/50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all">
-                </div>
-                <div class="flex items-center gap-2 pt-2">
-                    <input type="checkbox" id="editIsWindow" class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 focus:ring-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
-                    <label for="editIsWindow" class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">設為聯絡窗口</label>
-                </div>
-            </form>
-            <div class="flex gap-3 justify-end mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <button id="cancelPersonBtn" class="px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">取消</button>
-                <button id="savePersonBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors shadow-md shadow-primary-500/30">儲存</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 全局提示訊息 (Toast) -->
-    <div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 z-[200] px-6 py-3 rounded-full shadow-lg text-white font-medium text-sm transition-all duration-300 translate-y-20 opacity-0 flex items-center gap-2">
-        <i class="ph ph-info" id="toastIcon"></i>
-        <span id="toastMsg">訊息</span>
-    </div>
-
-    <script>
-        /** 
-         * 設定您的 Google Apps Script 網址 
-         * (請將剛剛發布的 GAS 網址貼在下方變數中)
-         */
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxZiuWL2qivuHspUD0YYpTN2lh2fWvCO_eS4Nx0TCWMW7oCifZu4n8Jggtl-RZsCvrw/exec"; 
-        
-        // 系統預設部門 (即使沒有資料也會顯示這些選項)
-        const DEFAULT_DEPTS = ["企劃室", "半導體海外營業", "資訊室", "管理部", "營業部", "財務部", "品保部", "研發中心", "資材部", "生管課", "生產部", "半導體事業部", "其他", "大量生技"];
-
-        // 全域狀態
-        let appState = {
-            data: [],         // 從後端拉取的所有資料
-            filteredData: [], // 搜尋/過濾後的資料
-            isAdmin: false,
-            adminPassword: '', // 登入成功後暫存於記憶體，供同步時使用
-            isLoading: true,
-            activeFilter: 'all', // 'all', 'window', 或 specific_dept
-            searchQuery: ''
-        };
-
-        // DOM 元素快取
-        const els = {
-            themeToggle: document.getElementById('themeToggle'),
-            html: document.documentElement,
-            searchInput: document.getElementById('searchInput'),
-            micBtn: document.getElementById('micBtn'),
-            filterWindowBtn: document.getElementById('filterWindowBtn'),
-            deptFilters: document.getElementById('deptFilters'),
-            totalStats: document.getElementById('totalStats'),
-            loadingState: document.getElementById('loadingState'),
-            cardsContainer: document.getElementById('cardsContainer'),
-            noResults: document.getElementById('noResults'),
-            adminLoginBtn: document.getElementById('adminLoginBtn'),
-            adminBtnText: document.getElementById('adminBtnText'),
-            adminPanel: document.getElementById('adminPanel'),
-            loginModal: document.getElementById('loginModal'),
-            loginModalContent: document.getElementById('loginModalContent'),
-            cancelLoginBtn: document.getElementById('cancelLoginBtn'),
-            confirmLoginBtn: document.getElementById('confirmLoginBtn'),
-            adminPwdInput: document.getElementById('adminPwdInput'),
-            addPersonBtn: document.getElementById('addPersonBtn'),
-            personModal: document.getElementById('personModal'),
-            personModalContent: document.getElementById('personModalContent'),
-            cancelPersonBtn: document.getElementById('cancelPersonBtn'),
-            savePersonBtn: document.getElementById('savePersonBtn'),
-            personForm: document.getElementById('personForm'),
-            exportBtn: document.getElementById('exportBtn'),
-            importFile: document.getElementById('importFile'),
-            toast: document.getElementById('toast'),
-            toastMsg: document.getElementById('toastMsg'),
-            toastIcon: document.getElementById('toastIcon')
-        };
-
-        // 初始化
-        function init() {
-            initTheme();
-            bindEvents();
-            generateSkeleton();
-            fetchData();
-        }
-
-        // 綁定事件
-        function bindEvents() {
-            // 主題切換
-            els.themeToggle.addEventListener('click', () => {
-                els.html.classList.toggle('dark');
-                localStorage.setItem('theme', els.html.classList.contains('dark') ? 'dark' : 'light');
-            });
-
-            // 搜尋輸入 (即時模糊比對)
-            els.searchInput.addEventListener('input', (e) => {
-                appState.searchQuery = e.target.value.trim().toLowerCase();
-                applyFilters();
-            });
-
-            // 只看聯絡窗口按鈕
-            els.filterWindowBtn.addEventListener('click', () => {
-                if (appState.activeFilter === 'window') {
-                    appState.activeFilter = 'all';
-                    els.filterWindowBtn.classList.remove('ring-2', 'ring-amber-500', 'ring-offset-2');
-                } else {
-                    appState.activeFilter = 'window';
-                    els.filterWindowBtn.classList.add('ring-2', 'ring-amber-500', 'ring-offset-2');
-                }
-                initDepts(); // 重新渲染部門按鈕的選取樣式與人數徽章
-                applyFilters();
-            });
-
-            // 管理員登入相關
-            els.adminLoginBtn.addEventListener('click', () => {
-                if (appState.isAdmin) {
-                    // 登出
-                    appState.isAdmin = false;
-                    appState.adminPassword = ''; // 清除記憶體中的密碼
-                    els.adminBtnText.innerText = "管理員登入";
-                    els.adminPanel.classList.add('hidden');
-                    els.adminLoginBtn.classList.remove('bg-primary-500/20', 'text-primary-600', 'dark:text-primary-400');
-                    applyFilters(); // 重新渲染卡片，移除編輯/刪除按鈕，確保真正登出
-                    showToast("已登出管理員模式", "success");
-                } else {
-                    // 開啟登入視窗
-                    els.loginModal.classList.remove('opacity-0', 'pointer-events-none');
-                    els.loginModalContent.classList.remove('scale-95');
-                    els.adminPwdInput.value = '';
-                    els.adminPwdInput.focus();
-                }
-            });
-
-            els.cancelLoginBtn.addEventListener('click', closeLoginModal);
-            
-            els.confirmLoginBtn.addEventListener('click', verifyAdmin);
-            els.adminPwdInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') verifyAdmin();
-            });
-
-            // 匯出功能
-            els.exportBtn.addEventListener('click', exportToExcel);
-
-            // 匯入功能
-            els.importFile.addEventListener('change', importFromExcel);
-
-            // 新增人員按鈕
-            els.addPersonBtn.addEventListener('click', () => openPersonModal());
-            els.cancelPersonBtn.addEventListener('click', closePersonModal);
-            els.savePersonBtn.addEventListener('click', savePerson);
-
-            // 語音搜尋功能初始化
-            initSpeechRecognition();
-            
-            // 頁面關閉時觸發上傳 (此為體驗增強，主要依賴操作時立即同步)
-            window.addEventListener('beforeunload', () => {
-                if (appState.isAdmin && appState.data.length > 0 && GAS_URL !== "") {
-                    // 嘗試發送 beacon 作為最後手段
-                    // navigator.sendBeacon 不支援客製化 header，如果 GAS 需特殊格式可能失效
-                    // 故主要依賴使用者點擊「匯入」或後續新增編輯時立刻同步
-                }
-            });
-        }
-
-        /* 
-         * STREAMING_CHUNK:API 互動與資料處理 
-         */
-
-        // 語音辨識初始化
-        function initSpeechRecognition() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                const recognition = new SpeechRecognition();
-                recognition.lang = 'zh-TW';
-                recognition.continuous = false;
-                recognition.interimResults = false;
-
-                els.micBtn.addEventListener('click', () => {
-                    recognition.start();
-                    els.micBtn.classList.remove('text-gray-400');
-                    els.micBtn.classList.add('text-red-500', 'animate-pulse');
-                    showToast('請說出您要查詢的關鍵字...', 'info');
-                });
-
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    // 去除句號等標點以便更準確搜尋
-                    const cleanText = transcript.replace(/[。，！？]/g, '');
-                    els.searchInput.value = cleanText;
-                    appState.searchQuery = cleanText.toLowerCase();
-                    applyFilters();
-                    showToast(`語音辨識結果: ${cleanText}`, 'success');
-                };
-
-                recognition.onspeechend = () => recognition.stop();
-
-                recognition.onend = () => {
-                    els.micBtn.classList.add('text-gray-400');
-                    els.micBtn.classList.remove('text-red-500', 'animate-pulse');
-                };
-
-                recognition.onerror = (event) => {
-                    console.error("語音辨識錯誤:", event.error);
-                    showToast('語音辨識未偵測到聲音或無法使用', 'error');
-                    els.micBtn.classList.add('text-gray-400');
-                    els.micBtn.classList.remove('text-red-500', 'animate-pulse');
-                };
-            } else {
-                els.micBtn.classList.add('hidden'); // 不支援時自動隱藏麥克風
-            }
-        }
-
-        // 確保資料有唯一ID(CRUD必備)
-        function ensureDataIds(dataList) {
-            dataList.forEach(item => {
-                if (!item.id) item.id = 'id_' + Math.random().toString(36).substr(2, 9);
-            });
-            return dataList;
-        }
-        
-        // 載入資料 (從 GAS 或使用假資料測試)
-        async function fetchData() {
-            setLoading(true);
-            try {
-                if (!GAS_URL) {
-                    console.warn("未設定 GAS_URL，載入示範資料。");
-                    setTimeout(() => {
-                        appState.data = ensureDataIds(getMockData());
-                        initDepts();
-                        applyFilters();
-                        setLoading(false);
-                    }, 1000);
-                    return;
-                }
-
-                const response = await fetch(`${GAS_URL}?action=read`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    appState.data = ensureDataIds(result.data);
-                } else {
-                    showToast("資料載入失敗: " + result.error, "error");
-                    appState.data = [];
-                }
-            } catch (error) {
-                console.error("Fetch error:", error);
-                showToast("網路錯誤或 CORS 問題，載入示範資料", "error");
-                appState.data = ensureDataIds(getMockData()); // 發生錯誤時載入假資料以防頁面空白
-            } finally {
-                initDepts();
-                applyFilters();
-                setLoading(false);
-            }
-        }
-
-        // 驗證管理員密碼 (一律透過後端 API 驗證，前端不存放任何密碼)
-        async function verifyAdmin() {
-            const pwd = els.adminPwdInput.value;
-            if (!pwd) return;
-
-            if (!GAS_URL) {
-                showToast("尚未設定後端網址(GAS_URL)，無法登入", "error");
-                return;
-            }
-
-            els.confirmLoginBtn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> 驗證中...';
-            els.confirmLoginBtn.disabled = true;
-
-            try {
-                const response = await fetch(`${GAS_URL}?action=verifyAdmin&password=${encodeURIComponent(pwd)}`);
-                const result = await response.json();
-                const isValid = result.success;
-
-                if (isValid) {
-                    appState.isAdmin = true;
-                    appState.adminPassword = pwd; // 記住這次登入用的密碼，同步時要用
-                    els.adminBtnText.innerText = "管理員 (已登入)";
-                    els.adminLoginBtn.classList.add('bg-primary-500/20', 'text-primary-600', 'dark:text-primary-400');
-                    els.adminPanel.classList.remove('hidden');
-                    closeLoginModal();
-                    applyFilters(); // 重新渲染卡片，顯示管理員操作按鈕
-                    showToast("管理員登入成功", "success");
-                } else {
-                    showToast("密碼錯誤", "error");
-                }
-            } catch (error) {
-                showToast("驗證連線失敗", "error");
-            } finally {
-                els.confirmLoginBtn.innerHTML = '登入';
-                els.confirmLoginBtn.disabled = false;
-            }
-        }
-
-        // 同步所有資料至後端
-        async function syncDataToBackend() {
-            if (!GAS_URL) {
-                showToast("未設定 GAS_URL，無法同步", "error");
-                return;
-            }
-            if (!appState.isAdmin || !appState.adminPassword) {
-                showToast("尚未登入管理員，無法同步", "error");
-                return;
-            }
-            
-            showToast("資料同步中，請稍候...", "info");
-            try {
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        action: 'syncAll',
-                        password: appState.adminPassword, // 使用登入時實際輸入的密碼
-                        data: appState.data
-                    })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    showToast("成功同步至 Google Sheets", "success");
-                } else {
-                    showToast("同步失敗: " + result.error, "error");
-                }
-            } catch (error) {
-                showToast("同步發生網路錯誤", "error");
-            }
-        }
-
-        /* 
-         * STREAMING_CHUNK:資料過濾與畫面渲染 
-         */
-
-        // 應用搜尋與過濾條件
-        function applyFilters() {
-            const q = appState.searchQuery;
-            const filter = appState.activeFilter;
-
-            appState.filteredData = appState.data.filter(item => {
-                // 1. 文字搜尋比對 (姓名, 分機, 部門)
-                const matchQuery = q === '' || 
-                    (item['姓名'] && String(item['姓名']).toLowerCase().includes(q)) ||
-                    (item['分機'] && String(item['分機']).includes(q)) ||
-                    (item['部門'] && String(item['部門']).toLowerCase().includes(q));
-
-                // 2. 條件過濾
-                let matchFilter = true;
-                if (filter === 'window') {
-                    matchFilter = (item['聯絡窗口'] === '是' || item['聯絡窗口'] === true);
-                } else if (filter !== 'all') {
-                    matchFilter = (item['部門'] === filter);
-                }
-
-                return matchQuery && matchFilter;
-            });
-
-            renderCards();
-        }
-
-        // 渲染卡片
-        function renderCards() {
-            els.cardsContainer.innerHTML = '';
-            
-            if (appState.filteredData.length === 0) {
-                els.cardsContainer.classList.add('hidden');
-                els.noResults.classList.remove('hidden');
-                return;
-            }
-
-            els.noResults.classList.add('hidden');
-            els.cardsContainer.classList.remove('hidden');
-
-            const fragment = document.createDocumentFragment();
-
-            appState.filteredData.forEach(person => {
-                const isWindow = person['聯絡窗口'] === '是' || person['聯絡窗口'] === true;
-                const dept = person['部門'] || '未知部門';
-                const name = person['姓名'] || '未命名';
-                const ext = person['分機'] || '---';
-                
-                // 決定卡片樣式 (改為緊湊的一排設計)
-                const cardClass = isWindow 
-                    ? 'glass-panel px-4 py-3 rounded-xl hover-lift relative overflow-hidden border-amber-300/50 dark:border-amber-700/50 shadow-[0_0_10px_rgba(251,191,36,0.1)] flex items-center justify-between gap-3' 
-                    : 'glass-panel px-4 py-3 rounded-xl hover-lift relative overflow-hidden flex items-center justify-between gap-3';
-
-                const card = document.createElement('div');
-                card.className = cardClass;
-                
-                // 管理員按鈕 (編輯/刪除)
-                const adminHtml = appState.isAdmin ? `
-                    <div class="flex items-center gap-1 border-l border-gray-200 dark:border-gray-700 pl-3 ml-1 shrink-0">
-                        <button onclick="openPersonModal('${person.id}')" class="p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="編輯"><i class="ph ph-pencil-simple text-lg"></i></button>
-                        <button onclick="deletePerson('${person.id}')" class="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="刪除"><i class="ph ph-trash text-lg"></i></button>
-                    </div>
-                ` : '';
-
-                let html = `
-                    <!-- 左側：部門與姓名 -->
-                    <div class="flex items-center gap-3 min-w-0 flex-1">
-                        <span class="inline-flex items-center justify-center text-center w-16 sm:w-20 shrink-0 px-1.5 py-1 rounded-md text-[11px] leading-tight font-semibold tracking-wide uppercase whitespace-normal break-words line-clamp-2
-                            ${isWindow ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' : 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'}">
-                            ${dept}
-                        </span>
-                        <div class="flex items-center gap-1 truncate min-w-0">
-                            <h3 class="text-base sm:text-lg font-bold truncate">${name}</h3>
-                            ${isWindow ? '<i class="ph-fill ph-star text-amber-500 text-[16px] shrink-0" title="聯絡窗口"></i>' : ''}
-                        </div>
-                    </div>
-
-                    <!-- 右側：分機與操作區 -->
-                    <div class="flex items-center shrink-0">
-                        <div class="group cursor-pointer flex items-center gap-2" onclick="copyToClipboard('${ext}')" title="點擊複製">
-                            <i class="ph ph-phone-call text-gray-400 group-hover:text-primary-500 transition-colors hidden sm:block"></i>
-                            <span class="text-lg sm:text-xl font-bold text-gray-800 dark:text-gray-100 font-mono tracking-tight group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">${ext}</span>
-                        </div>
-                        ${adminHtml}
-                    </div>
-                `;
-
-                card.innerHTML = html;
-                fragment.appendChild(card);
-            });
-
-            els.cardsContainer.appendChild(fragment);
-        }
-
-        /* CRUD 操作邏輯 */
-        
-        // 打開編輯/新增表單
-        window.openPersonModal = function(id = null) {
-            if (!appState.isAdmin) {
-                showToast("請先登入管理員", "error");
-                return;
-            }
-            const isEdit = id !== null;
-            document.getElementById('personModalTitle').innerHTML = isEdit ? 
-                '<i class="ph ph-pencil-simple text-blue-500"></i> 編輯人員' : 
-                '<i class="ph ph-user-plus text-primary-500"></i> 新增人員';
-            
-            if (isEdit) {
-                const person = appState.data.find(p => p.id === id);
-                if (!person) return;
-                document.getElementById('editPersonId').value = person.id;
-                document.getElementById('editDept').value = person['部門'] || '';
-                document.getElementById('editName').value = person['姓名'] || '';
-                document.getElementById('editExt').value = person['分機'] || '';
-                document.getElementById('editIsWindow').checked = (person['聯絡窗口'] === '是' || person['聯絡窗口'] === true);
-            } else {
-                els.personForm.reset();
-                document.getElementById('editPersonId').value = '';
-                // 若當前有過濾部門，則預設填入該部門
-                document.getElementById('editDept').value = appState.activeFilter !== 'all' && appState.activeFilter !== 'window' ? appState.activeFilter : '';
-            }
-
-            els.personModal.classList.remove('opacity-0', 'pointer-events-none');
-            els.personModalContent.classList.remove('scale-95');
-        };
-
-        // 關閉表單
-        window.closePersonModal = function() {
-            els.personModal.classList.add('opacity-0', 'pointer-events-none');
-            els.personModalContent.classList.add('scale-95');
-        };
-
-        // 儲存人員
-        window.savePerson = function() {
-            if (!appState.isAdmin) {
-                showToast("請先登入管理員", "error");
-                return;
-            }
-            const id = document.getElementById('editPersonId').value;
-            const dept = document.getElementById('editDept').value.trim();
-            const name = document.getElementById('editName').value.trim();
-            const ext = document.getElementById('editExt').value.trim();
-            const isWindow = document.getElementById('editIsWindow').checked;
-
-            if (!dept || !name || !ext) {
-                showToast("請填寫必填欄位 (部門、姓名、分機)", "error");
-                return;
-            }
-
-            const personData = {
-                'id': id || 'id_' + Math.random().toString(36).substr(2, 9),
-                '部門': dept,
-                '姓名': name,
-                '分機': ext,
-                '聯絡窗口': isWindow ? '是' : '否',
-                '職稱': '', // 依需求移除職稱，維持資料結構相容
-            };
-
-            if (id) {
-                // 編輯
-                const index = appState.data.findIndex(p => p.id === id);
-                if (index > -1) {
-                    appState.data[index] = { ...appState.data[index], ...personData };
-                }
-                showToast("已更新人員資料", "success");
-            } else {
-                // 新增
-                appState.data.push(personData);
-                showToast("已新增人員", "success");
-            }
-
-            closePersonModal();
-            initDepts();     // 重整部門過濾器
-            applyFilters();  // 刷新畫面
-            syncDataToBackend(); // 同步至後端
-        };
-
-        // 刪除人員
-        window.deletePerson = function(id) {
-            if (!appState.isAdmin) {
-                showToast("請先登入管理員", "error");
-                return;
-            }
-            if (confirm("確定要刪除這位人員嗎？此操作無法復原。")) {
-                appState.data = appState.data.filter(p => p.id !== id);
-                showToast("人員已刪除", "success");
-                initDepts();
-                applyFilters();
-                syncDataToBackend(); // 同步至後端
-            }
-        };
-
-        // 產生人數徽章的 HTML (依按鈕是否為選取狀態切換配色)
-        function countBadgeHtml(count, isActive) {
-            const badgeClass = isActive
-                ? 'bg-white/25 text-white'
-                : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
-            return `<span class="ml-1.5 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${badgeClass}">${count}</span>`;
-        }
-
-        // 初始化部門過濾器按鈕
-        function initDepts() {
-            // 從資料中提取實際有的部門，並與預設部門合併去重
-            const dataDepts = [...new Set(appState.data.map(item => item['部門']).filter(Boolean))];
-            const allDepts = [...new Set([...DEFAULT_DEPTS, ...dataDepts])];
-
-            // 計算每個部門的人數
-            const deptCounts = {};
-            appState.data.forEach(item => {
-                const dept = item['部門'];
-                if (!dept) return;
-                deptCounts[dept] = (deptCounts[dept] || 0) + 1;
-            });
-
-            const total = appState.data.length;
-            const activeDeptCount = dataDepts.length;
-
-            // 更新頁首統計文字
-            if (els.totalStats) {
-                els.totalStats.innerHTML = `<i class="ph-fill ph-users mr-1"></i>共 ${total} 位聯絡人．${activeDeptCount} 個單位`;
-            }
-            
-            els.deptFilters.innerHTML = '';
-            
-            // 加入「全部」按鈕
-            const allBtn = document.createElement('button');
-            const allActive = appState.activeFilter === 'all';
-            allBtn.className = `dept-btn px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm flex items-center ${allActive ? 'bg-primary-500 text-white' : 'bg-white/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-700'}`;
-            allBtn.innerHTML = `全部${countBadgeHtml(total, allActive)}`;
-            allBtn.onclick = () => filterByDept('all');
-            els.deptFilters.appendChild(allBtn);
-
-            // 加入各部門按鈕
-            allDepts.forEach(dept => {
-                const count = deptCounts[dept] || 0;
-                const isActive = appState.activeFilter === dept;
-                const btn = document.createElement('button');
-                btn.className = `dept-btn px-4 py-2 rounded-full text-sm font-medium transition-all shadow-sm flex items-center ${isActive ? 'bg-primary-500 text-white' : 'bg-white/50 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-700'}`;
-                btn.innerHTML = `${dept}${countBadgeHtml(count, isActive)}`;
-                btn.onclick = () => filterByDept(dept);
-                els.deptFilters.appendChild(btn);
-            });
-        }
-
-        function filterByDept(dept) {
-            appState.activeFilter = dept;
-            
-            // 移除窗口過濾的 active 狀態
-            els.filterWindowBtn.classList.remove('ring-2', 'ring-amber-500', 'ring-offset-2');
-
-            initDepts(); // 重新渲染以更新選取樣式與人數徽章
-            applyFilters();
-        }
-
-        /* 
-         * STREAMING_CHUNK:匯出與匯入功能 (SheetJS) 
-         */
-        
-        function exportToExcel() {
-            if (appState.data.length === 0) {
-                showToast("沒有資料可匯出", "error");
-                return;
-            }
-            // 建立工作表
-            const ws = XLSX.utils.json_to_sheet(appState.data.map(item => ({
-                '部門': item['部門'] || '',
-                '姓名': item['姓名'] || '',
-                '分機': item['分機'] || '',
-                '職稱': item['職稱'] || '',
-                '聯絡窗口': (item['聯絡窗口'] === true || item['聯絡窗口'] === '是') ? '是' : '否',
-                '備註': item['備註'] || ''
-            })));
-            
-            // 建立工作簿
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "分機表");
-            
-            // 匯出檔案
-            XLSX.writeFile(wb, `企業分機表_${new Date().toISOString().slice(0,10)}.xlsx`);
-            showToast("匯出成功", "success");
-        }
-
-        function importFromExcel(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    
-                    // 假設讀取第一個 sheet
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    
-                    // 轉換為 JSON
-                    const json = XLSX.utils.sheet_to_json(worksheet);
-                    
-                    if (json.length > 0) {
-                        // 更新本地資料
-                        appState.data = json;
-                        initDepts();
-                        applyFilters();
-                        showToast(`成功匯入 ${json.length} 筆資料`, "success");
-                        
-                        // 自動同步至後端 (若有設定 GAS URL)
-                        if (GAS_URL) {
-                            syncDataToBackend();
-                        }
-                    } else {
-                        showToast("檔案中沒有有效資料", "error");
-                    }
-                } catch (error) {
-                    showToast("讀取 Excel 失敗", "error");
-                    console.error(error);
-                }
-            };
-            reader.readAsArrayBuffer(file);
-            
-            // 清空 input 讓下次選同一個檔案也能觸發 change
-            els.importFile.value = '';
-        }
-
-        /* 
-         * STREAMING_CHUNK:UI 輔助工具 (主題、骨架屏、Toast、剪貼簿) 
-         */
-
-        function initTheme() {
-            const storedTheme = localStorage.getItem('theme');
-            if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                els.html.classList.add('dark');
-            } else {
-                els.html.classList.remove('dark');
-            }
-        }
-
-        function setLoading(isLoading) {
-            appState.isLoading = isLoading;
-            if (isLoading) {
-                els.loadingState.classList.remove('hidden');
-                els.cardsContainer.classList.add('hidden');
-                els.noResults.classList.add('hidden');
-            } else {
-                els.loadingState.classList.add('hidden');
-            }
-        }
-
-        function generateSkeleton() {
-            els.loadingState.innerHTML = '';
-            for (let i = 0; i < 8; i++) {
-                els.loadingState.innerHTML += `
-                    <div class="glass-panel px-4 py-3 rounded-xl flex items-center justify-between gap-4">
-                        <div class="flex items-center gap-3">
-                            <div class="skeleton h-6 w-16 rounded"></div>
-                            <div class="skeleton h-6 w-20 rounded"></div>
-                        </div>
-                        <div class="skeleton h-6 w-12 rounded"></div>
-                    </div>
-                `;
-            }
-        }
-
-        function closeLoginModal() {
-            els.loginModal.classList.add('opacity-0', 'pointer-events-none');
-            els.loginModalContent.classList.add('scale-95');
-        }
-
-        function showToast(msg, type = 'info') {
-            els.toastMsg.innerText = msg;
-            
-            // 設定顏色與圖標
-            els.toast.className = 'fixed bottom-5 left-1/2 transform -translate-x-1/2 z-[200] px-6 py-3 rounded-full shadow-lg text-white font-medium text-sm transition-all duration-300 flex items-center gap-2';
-            
-            if (type === 'success') {
-                els.toast.classList.add('bg-green-500');
-                els.toastIcon.className = 'ph-fill ph-check-circle text-lg';
-            } else if (type === 'error') {
-                els.toast.classList.add('bg-red-500');
-                els.toastIcon.className = 'ph-fill ph-warning-circle text-lg';
-            } else {
-                els.toast.classList.add('bg-gray-800', 'dark:bg-gray-600');
-                els.toastIcon.className = 'ph-fill ph-info text-lg';
-            }
-
-            // 顯示動畫
-            requestAnimationFrame(() => {
-                els.toast.classList.remove('translate-y-20', 'opacity-0');
-            });
-
-            // 3秒後隱藏
-            setTimeout(() => {
-                els.toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-
-        function copyToClipboard(text) {
-            const tempInput = document.createElement("input");
-            tempInput.value = text;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            document.execCommand("copy");
-            document.body.removeChild(tempInput);
-            showToast(`已複製分機號碼: ${text}`, "success");
-        }
-
-        // 示範資料 (當沒有 GAS 連線時使用)
-        function getMockData() {
-            return [
-                { "部門": "企劃室", "姓名": "王小明", "分機": "101", "職稱": "經理", "聯絡窗口": "是" },
-                { "部門": "半導體海外營業", "姓名": "林志玲", "分機": "205", "職稱": "副理", "聯絡窗口": "是" },
-                { "部門": "資訊室", "姓名": "陳工程", "分機": "311", "職稱": "高級工程師", "聯絡窗口": "否" },
-                { "部門": "資訊室", "姓名": "張小芬", "分機": "312", "職稱": "系統管理員", "聯絡窗口": "是" },
-                { "部門": "管理部", "姓名": "李大同", "分機": "400", "職稱": "總監", "聯絡窗口": "否" },
-                { "部門": "財務部", "姓名": "黃會計", "分機": "505", "職稱": "會計", "聯絡窗口": "是" },
-                { "部門": "研發中心", "姓名": "趙創新", "分機": "601", "職稱": "研發長", "聯絡窗口": "是" },
-                { "部門": "研發中心", "姓名": "周技術", "分機": "602", "職稱": "研究員", "聯絡窗口": "否" },
-                { "部門": "生管課", "姓名": "吳排程", "分機": "703", "職稱": "課長", "聯絡窗口": "是" },
-                { "部門": "生產部", "姓名": "鄭廠長", "分機": "800", "職稱": "廠長", "聯絡窗口": "是" }
-            ];
-        }
-
-        // 啟動應用
-        document.addEventListener('DOMContentLoaded', init);
-
-    </script>
 </body>
 </html>
