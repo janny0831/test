@@ -57,6 +57,17 @@
     color: var(--muted);
     line-height: 1.6;
   }
+  .name-display {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 18px;
+  }
+  .name-display.unknown {
+    font-size: 16px;
+    font-weight: 400;
+    color: var(--muted);
+  }
   .copy-btn {
     margin-top: 18px;
     background: var(--accent);
@@ -75,6 +86,7 @@
 <body>
 
 <div class="card">
+  <div class="name-display" id="nameDisplay"></div>
   <div class="label">您的裝置 ID</div>
   <div class="device-id" id="deviceIdDisplay">產生中...</div>
   <button class="copy-btn" onclick="copyId()">複製 ID</button>
@@ -84,6 +96,12 @@
 <script>
 (function () {
   const STORAGE_KEY = "site_device_id_v1";
+
+  // 裝置 ID 對應姓名，需要新增人員直接在這裡加一行即可
+  const ID_NAME_MAP = {
+    "596881FC68ACA83C": "阿華",
+    "43ECF2955D2C6955": "小戴"
+  };
 
   // 簡單雜湊函式，把字串轉成穩定的 hex 值
   function hashString(str) {
@@ -142,6 +160,16 @@
 
   const deviceId = getOrCreateDeviceId();
   document.getElementById("deviceIdDisplay").textContent = deviceId;
+
+  const nameEl = document.getElementById("nameDisplay");
+  const matchedName = ID_NAME_MAP[deviceId];
+  if (matchedName) {
+    nameEl.textContent = matchedName;
+    nameEl.classList.remove("unknown");
+  } else {
+    nameEl.textContent = "未登記的裝置";
+    nameEl.classList.add("unknown");
+  }
 
   window.copyId = function () {
     navigator.clipboard.writeText(deviceId).then(() => {
