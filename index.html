@@ -68,6 +68,53 @@
     font-weight: 400;
     color: var(--muted);
   }
+  .picker {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .picker.show { display: flex; }
+  .picker-title {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .name-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text);
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .name-btn:hover {
+    background: rgba(91,140,255,0.12);
+    border-color: var(--accent);
+  }
+  .name-btn:active { transform: scale(0.98); }
+  .none-btn {
+    background: transparent;
+    border: 1px dashed rgba(255,255,255,0.15);
+    color: var(--muted);
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .change-link {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+  .hidden { display: none !important; }
   .copy-btn {
     margin-top: 18px;
     background: var(--accent);
@@ -86,22 +133,37 @@
 <body>
 
 <div class="card">
-  <div class="name-display" id="nameDisplay"></div>
+  <div class="name-display hidden" id="nameDisplay"></div>
+
+  <div class="picker" id="namePicker">
+    <div class="picker-title">請選擇您的姓名（僅需選擇一次）</div>
+    <div id="nameButtonList"></div>
+    <button class="none-btn" onclick="skipName()">找不到我的名字，先跳過</button>
+  </div>
+
   <div class="label">您的裝置 ID</div>
   <div class="device-id" id="deviceIdDisplay">產生中...</div>
   <button class="copy-btn" onclick="copyId()">複製 ID</button>
   <div class="hint">此 ID 會儲存在本機瀏覽器中，<br>只要不清除瀏覽器資料，每次開啟都會顯示相同 ID。</div>
+  <div>
+    <button class="change-link hidden" id="changeLink" onclick="resetName()">不是我 / 重新選擇</button>
+  </div>
 </div>
 
 <script>
 (function () {
   const STORAGE_KEY = "site_device_id_v1";
+  const NAME_STORAGE_KEY = "site_assigned_name_v1";
+  const SKIPPED_VALUE = "__SKIPPED__";
 
-  // 裝置 ID 對應姓名，需要新增人員直接在這裡加一行即可
+  // 名單：新增人員直接在這裡加一行即可
+  // （左邊的 ID 只作為備用比對，主要仍是靠使用者「選一次」來記住身分）
   const ID_NAME_MAP = {
     "596881FC68ACA83C": "阿華",
     "43ECF2955D2C6955": "小戴"
   };
+
+  const NAME_LIST = Object.values(ID_NAME_MAP);
 
   // 簡單雜湊函式，把字串轉成穩定的 hex 值
   function hashString(str) {
@@ -162,13 +224,68 @@
   document.getElementById("deviceIdDisplay").textContent = deviceId;
 
   const nameEl = document.getElementById("nameDisplay");
-  const matchedName = ID_NAME_MAP[deviceId];
-  if (matchedName) {
-    nameEl.textContent = matchedName;
-    nameEl.classList.remove("unknown");
-  } else {
+  const pickerEl = document.getElementById("namePicker");
+  const changeLinkEl = document.getElementById("changeLink");
+  const buttonListEl = document.getElementById("nameButtonList");
+
+  function showName(name) {
+    nameEl.textContent = name;
+    nameEl.classList.remove("unknown", "hidden");
+    pickerEl.classList.remove("show");
+    changeLinkEl.classList.remove("hidden");
+  }
+
+  function showUnknown() {
     nameEl.textContent = "未登記的裝置";
     nameEl.classList.add("unknown");
+    nameEl.classList.remove("hidden");
+    pickerEl.classList.remove("show");
+    changeLinkEl.classList.remove("hidden");
+  }
+
+  function showPicker() {
+    buttonListEl.innerHTML = "";
+    NAME_LIST.forEach(function (name) {
+      const btn = document.createElement("button");
+      btn.className = "name-btn";
+      btn.textContent = name;
+      btn.onclick = function () { assignName(name); };
+      buttonListEl.appendChild(btn);
+    });
+    nameEl.classList.add("hidden");
+    changeLinkEl.classList.add("hidden");
+    pickerEl.classList.add("show");
+  }
+
+  function assignName(name) {
+    localStorage.setItem(NAME_STORAGE_KEY, name);
+    showName(name);
+  }
+
+  window.skipName = function () {
+    localStorage.setItem(NAME_STORAGE_KEY, SKIPPED_VALUE);
+    showUnknown();
+  };
+
+  window.resetName = function () {
+    localStorage.removeItem(NAME_STORAGE_KEY);
+    showPicker();
+  };
+
+  // 判斷順序：
+  // 1. 這個瀏覽器之前選過名字 → 直接顯示
+  // 2. 之前選過「跳過」→ 顯示未登記
+  // 3. 裝置 ID 剛好對得到名單（例如同一瀏覽器再次造訪）→ 直接顯示並記住
+  // 4. 都沒有 → 顯示選擇畫面，讓使用者選一次
+  const savedName = localStorage.getItem(NAME_STORAGE_KEY);
+  if (savedName === SKIPPED_VALUE) {
+    showUnknown();
+  } else if (savedName) {
+    showName(savedName);
+  } else if (ID_NAME_MAP[deviceId]) {
+    assignName(ID_NAME_MAP[deviceId]);
+  } else {
+    showPicker();
   }
 
   window.copyId = function () {
