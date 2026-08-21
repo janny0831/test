@@ -148,6 +148,7 @@
   .sum-progress .progress-fill{height:100%;border-radius:5px;}
   .sum-progress .progress-fill.delivered{background:var(--accent);}
   .sum-progress .progress-fill.completed{background:var(--jade);}
+  .sum-progress .progress-fill.ng{background:var(--danger);}
   .sum-progress-pct{font-family:var(--font-display);font-size:13px;font-weight:700;margin-top:6px;color:var(--text-dim);}
   @media(max-width:640px){
     .sum-item-name{font-size:21px;}
@@ -259,6 +260,11 @@
     background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:6px;
     padding:5px 10px;
   }
+  .demand-batch.urgent{
+    background:var(--danger-soft);border-color:var(--danger);
+  }
+  .demand-batch.urgent .dbatch-qty{color:var(--danger);}
+  .demand-batch.urgent .dbatch-date{color:var(--danger);font-weight:700;}
   .dbatch-qty{font-family:var(--font-display);font-size:17px;font-weight:700;}
   .dbatch-date{font-size:12px;color:var(--text-faint);white-space:nowrap;font-weight:600;}
   .demand-total{
@@ -326,13 +332,15 @@
             <tr>
               <th>品項</th>
               <th>需求數量（依批次）</th>
-              <th>已進貨</th>
               <th>還欠數量</th>
-              <th>未測半成品剩餘</th>
+              <th>已進貨</th>
               <th>已完成</th>
+              <th>未測半成品剩餘</th>
               <th>NG 數量</th>
               <th>供應商已交貨</th>
               <th>作業已完成</th>
+              <th>NG 率</th>
+              <th>日均完成量</th>
             </tr>
           </thead>
           <tbody id="summaryGrid"></tbody>
@@ -422,6 +430,10 @@
           <label>完成時間</label>
           <input type="date" name="date" required>
         </div>
+        <div class="field">
+          <label>花費工時（小時）</label>
+          <input type="number" name="hours" min="0" step="0.5" placeholder="例如 4">
+        </div>
         <div class="field full">
           <label>備註</label>
           <textarea name="note" placeholder="選填"></textarea>
@@ -445,6 +457,13 @@
         <div class="field">
           <label>品項</label>
           <select name="item" required></select>
+        </div>
+        <div class="field">
+          <label>NG 類型</label>
+          <select name="ngAction" required>
+            <option value="release">放行（送回廠商）</option>
+            <option value="return">回廠（廠商修復送回）</option>
+          </select>
         </div>
         <div class="field">
           <label>NG 數量</label>
@@ -593,16 +612,32 @@ function showToast(msg){
 function sumQty(list, item){
   return list.filter(r=>r.item===item).reduce((s,r)=>s+Number(r.qty),0);
 }
+function computeNgNet(itemKey){
+  const net = DATA.ng.filter(r=>r.item===itemKey).reduce((s,r)=>{
+    const q = Number(r.qty);
+    return s + (r.ngAction==='return' ? -q : q);
+  },0);
+  return Math.max(net, 0);
+}
 function computeStats(itemKey){
   const demandQty = sumQty(DATA.demand, itemKey);
   const incomingQty = sumQty(DATA.incoming, itemKey);
   const completedQty = sumQty(DATA.completed, itemKey);
-  const ngQty = sumQty(DATA.ng, itemKey);
+  const ngQty = computeNgNet(itemKey);
   const shortageQty = Math.max(demandQty - incomingQty, 0);
   const pendingQty = Math.max(incomingQty - completedQty - ngQty, 0); // 未測半成品剩餘
   const deliveredRate = demandQty>0 ? Math.min(incomingQty/demandQty,1)*100 : 0;
   const completedRate = demandQty>0 ? Math.min(completedQty/demandQty,1)*100 : 0;
-  return {demandQty, incomingQty, completedQty, ngQty, shortageQty, pendingQty, deliveredRate, completedRate};
+  const ngRate = demandQty>0 ? Math.min(ngQty/demandQty,1)*100 : 0;
+
+  // 日均完成量：依完成登記中填寫的工時換算（1天=8小時）
+  const completedRecords = DATA.completed.filter(r=>r.item===itemKey);
+  const totalHours = completedRecords.reduce((s,r)=> s + (Number(r.hours)||0), 0);
+  const hoursQty = completedRecords.reduce((s,r)=> r.hours!==undefined && r.hours!==null && r.hours!=='' ? s+Number(r.qty) : s, 0);
+  const totalDays = totalHours / 8;
+  const avgPerDay = totalDays>0 ? hoursQty/totalDays : 0;
+
+  return {demandQty, incomingQty, completedQty, ngQty, shortageQty, pendingQty, deliveredRate, completedRate, ngRate, avgPerDay, totalHours};
 }
 
 /* ---------- Dashboard ---------- */
@@ -613,17 +648,27 @@ function formatShortDate(d){
   return `${Number(parts[1])}/${Number(parts[2])}`;
 }
 
+function daysUntil(dateStr){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const target = new Date(dateStr+'T00:00:00');
+  return Math.round((target-today)/86400000);
+}
+
 function renderDemandBatchCell(itemKey){
   const batches = DATA.demand.filter(r=>r.item===itemKey).sort((a,b)=>a.date.localeCompare(b.date));
   if(batches.length===0){
     return `<div class="demand-empty">尚無需求</div>`;
   }
   const total = batches.reduce((s,r)=>s+Number(r.qty),0);
-  const listHtml = batches.map(r=>`
-    <div class="demand-batch">
+  const listHtml = batches.map(r=>{
+    const urgent = daysUntil(r.date) <= 3; // 3天內到期（含逾期）
+    return `
+    <div class="demand-batch${urgent?' urgent':''}">
       <span class="dbatch-qty">${r.qty}</span>
       <span class="dbatch-date">${formatShortDate(r.date)}</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   return `
     <div class="demand-batch-list">${listHtml}</div>
     <div class="demand-total"><span>合計</span><b>${total}</b></div>`;
@@ -641,10 +686,10 @@ function renderDashboard(){
         <div class="sum-item-cat">${it.cat}</div>
       </td>
       <td style="text-align:left;">${renderDemandBatchCell(it.key)}</td>
-      <td><div class="${numCls(s.incomingQty)}">${s.incomingQty}</div></td>
       <td><div class="sum-num ${s.shortageQty>0?'danger':'zero'}">${s.shortageQty}</div></td>
-      <td><div class="sum-num ${s.pendingQty>0?'amber':'zero'}">${s.pendingQty}</div></td>
+      <td><div class="${numCls(s.incomingQty)}">${s.incomingQty}</div></td>
       <td><div class="sum-num ${s.completedQty>0?'jade':'zero'}">${s.completedQty}</div></td>
+      <td><div class="sum-num ${s.pendingQty>0?'amber':'zero'}">${s.pendingQty}</div></td>
       <td><div class="sum-num ${s.ngQty>0?'danger':'zero'}">${s.ngQty}</div></td>
       <td>
         <div class="sum-progress">
@@ -657,6 +702,16 @@ function renderDashboard(){
           <div class="progress-track"><div class="progress-fill completed" style="width:${s.completedRate}%"></div></div>
           <div class="sum-progress-pct">${s.completedRate.toFixed(0)}%</div>
         </div>
+      </td>
+      <td>
+        <div class="sum-progress">
+          <div class="progress-track"><div class="progress-fill ng" style="width:${s.ngRate}%"></div></div>
+          <div class="sum-progress-pct">${s.ngRate.toFixed(0)}%</div>
+        </div>
+      </td>
+      <td>
+        <div class="sum-num ${s.avgPerDay>0?'jade':'zero'}" style="font-size:22px;">${s.avgPerDay>0?s.avgPerDay.toFixed(1):'—'}</div>
+        ${s.avgPerDay>0?'<div class="sum-progress-pct">個/天</div>':''}
       </td>
     </tr>`;
   }).join('');
@@ -676,6 +731,8 @@ function setupForm(formId, type, tableRenderFn){
       note: fd.get('note') || '',
       createdAt: new Date().toISOString()
     };
+    if(fd.has('ngAction')) rec.ngAction = fd.get('ngAction');
+    if(fd.has('hours') && fd.get('hours')!=='') rec.hours = Number(fd.get('hours'));
     DATA[type].push(rec);
     saveData();
     form.reset();
@@ -705,16 +762,19 @@ function renderTypeTable(type, containerId){
   }
   const dateLabel = {demand:'需求完成時間', incoming:'進貨時間', completed:'完成時間', ng:'發現時間'}[type];
   const qtyLabel = {demand:'需求數量', incoming:'進貨數量', completed:'完成數量', ng:'NG數量'}[type];
+  const ngActionLabel = {release:'放行', return:'回廠'};
   container.innerHTML = `
     <table>
       <thead><tr>
-        <th>品項</th><th>${qtyLabel}</th><th>${dateLabel}</th><th>備註</th><th></th>
+        <th>品項</th>${type==='ng'?'<th>類型</th>':''}<th>${qtyLabel}</th>${type==='completed'?'<th>工時（小時）</th>':''}<th>${dateLabel}</th><th>備註</th><th></th>
       </tr></thead>
       <tbody>
         ${list.map(r=>`
           <tr>
             <td><span class="pill ${type}">${r.item}</span></td>
+            ${type==='ng'?`<td><span class="pill ${r.ngAction==='return'?'completed':'ng'}">${ngActionLabel[r.ngAction]||'放行'}</span></td>`:''}
             <td>${r.qty}</td>
+            ${type==='completed'?`<td>${(r.hours!==undefined && r.hours!==null && r.hours!=='')?r.hours:'—'}</td>`:''}
             <td>${r.date}</td>
             <td class="note-cell">${escapeHtml(r.note)||'—'}</td>
             <td><button class="del-btn" onclick="deleteRecord('${type}','${r.id}')" title="刪除">✕</button></td>
@@ -768,7 +828,7 @@ function renderRecordsTable(){
       <tbody>
         ${all.map(r=>`
           <tr>
-            <td><span class="pill ${r.type}">${TYPE_LABEL[r.type]}</span></td>
+            <td><span class="pill ${r.type}">${TYPE_LABEL[r.type]}${r.type==='ng'?'・'+(r.ngAction==='return'?'回廠':'放行'):''}</span></td>
             <td>${r.item}</td>
             <td>${r.qty}</td>
             <td>${r.date}</td>
@@ -830,9 +890,11 @@ function renderMatrixTable(){
   records.forEach(r=>{
     if(!byDate[r.date]) byDate[r.date] = {};
     cols.forEach(c=>{ if(!(c.key in byDate[r.date])) byDate[r.date][c.key]=0; });
-    byDate[r.date][r.item] = (byDate[r.date][r.item]||0) + Number(r.qty);
+    const signedQty = (type==='ng' && r.ngAction==='return') ? -Number(r.qty) : Number(r.qty);
+    byDate[r.date][r.item] = (byDate[r.date][r.item]||0) + signedQty;
     byDate[r.date]._notes = byDate[r.date]._notes || [];
-    if(r.note) byDate[r.date]._notes.push(r.note);
+    const noteText = type==='ng' ? `[${r.ngAction==='return'?'回廠':'放行'}]${r.note||''}` : r.note;
+    if(r.note) byDate[r.date]._notes.push(noteText);
   });
 
   const dates = Object.keys(byDate).sort();
@@ -894,9 +956,10 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
     const s = computeStats(it.key);
     return {
       '品項': it.key, '分類': it.cat,
-      '需求數量': s.demandQty, '已進貨數量': s.incomingQty, '還欠數量': s.shortageQty,
-      '未測半成品剩餘': s.pendingQty, '已完成數量': s.completedQty, 'NG數量': s.ngQty,
-      '已交貨率(%)': s.deliveredRate.toFixed(1), '已完成率(%)': s.completedRate.toFixed(1)
+      '需求數量': s.demandQty, '還欠數量': s.shortageQty, '已進貨數量': s.incomingQty,
+      '已完成數量': s.completedQty, '未測半成品剩餘': s.pendingQty, 'NG數量': s.ngQty,
+      '已交貨率(%)': s.deliveredRate.toFixed(1), '已完成率(%)': s.completedRate.toFixed(1), 'NG率(%)': s.ngRate.toFixed(1),
+      '日均完成量': s.avgPerDay>0 ? s.avgPerDay.toFixed(1) : ''
     };
   });
   const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
@@ -904,11 +967,19 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
 
   const sheetMap = {demand:'需求登記', incoming:'進貨登記', completed:'完成登記', ng:'NG登記'};
   const dateLabelMap = {demand:'需求完成時間', incoming:'進貨時間', completed:'完成時間', ng:'發現時間'};
+  const ngActionLabel = {release:'放行', return:'回廠'};
   Object.keys(sheetMap).forEach(type=>{
-    const rows = DATA[type].map(r=>({
-      '品項': r.item, '數量': r.qty, [dateLabelMap[type]]: r.date, '備註': r.note
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows.length? rows : [{'品項':'','數量':'','備註':''}]);
+    const rows = DATA[type].map(r=>{
+      const row = {'品項': r.item};
+      if(type==='ng') row['類型'] = ngActionLabel[r.ngAction] || '放行';
+      row['數量'] = r.qty;
+      if(type==='completed') row['工時(小時)'] = (r.hours!==undefined && r.hours!==null && r.hours!=='') ? r.hours : '';
+      row[dateLabelMap[type]] = r.date;
+      row['備註'] = r.note;
+      return row;
+    });
+    const emptyRow = type==='ng' ? {'品項':'','類型':'','數量':'','備註':''} : {'品項':'','數量':'','備註':''};
+    const ws = XLSX.utils.json_to_sheet(rows.length? rows : [emptyRow]);
     XLSX.utils.book_append_sheet(wb, ws, sheetMap[type]);
   });
 
